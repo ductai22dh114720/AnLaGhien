@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_dapm/features/authentication/screen/login_screen.dart';
-import 'package:flutter_dapm/features/authentication/screen/signup_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/home_screen.dart'; // Giả sử màn hình tiếp theo là Login
+import 'package:flutter_dapm/features/authentication/screen/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,7 +11,6 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  // Controller để điều khiển animation
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -22,42 +19,33 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // --- Cấu hình Animation ---
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500), // Thời gian của animation
+      duration: const Duration(milliseconds: 1500),
     );
 
-    // Animation mờ dần từ 0 (trong suốt) đến 1 (rõ nét)
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
-    // Animation phóng to từ 0.8 đến 1.0
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.elasticOut, // Hiệu ứng nảy nhẹ
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
     );
 
-    // Bắt đầu chạy animation
     _animationController.forward();
 
-    // --- Hẹn giờ để chuyển màn hình ---
+    // Hẹn giờ và luôn chuyển đến OnboardingScreen
     Timer(const Duration(seconds: 3), () {
-      // Sử dụng pushReplacement để người dùng không thể quay lại màn hình Splash
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const Home(), // Thay bằng màn hình bạn muốn
-        ),
-      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        );
+      }
     });
   }
 
   @override
   void dispose() {
-    // Giải phóng controller để tránh rò rỉ bộ nhớ
     _animationController.dispose();
     super.dispose();
   }
@@ -65,10 +53,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Màu nền chủ đạo
       backgroundColor: Colors.deepOrange,
       body: Center(
-        // Sử dụng ScaleTransition và FadeTransition để áp dụng animation
         child: ScaleTransition(
           scale: _scaleAnimation,
           child: FadeTransition(
@@ -76,13 +62,8 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Hiển thị logo của bạn
-                Image.asset(
-                  'assets/logo_splash.png', // Đảm bảo đường dẫn đúng
-                  width: 150, // Điều chỉnh kích thước logo nếu cần
-                ),
+                Image.asset('assets/logo_splash.png', width: 150),
                 const SizedBox(height: 20),
-                // Có thể thêm tên ứng dụng hoặc slogan ở đây
                 const Text(
                   'Food App',
                   style: TextStyle(
