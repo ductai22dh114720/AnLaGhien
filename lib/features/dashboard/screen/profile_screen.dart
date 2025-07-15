@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class Infor extends StatefulWidget {
-  const Infor({super.key});
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
 
   @override
-  State<Infor> createState() => _InforState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _InforState extends State<Infor> {
+class _ProfileScreenState extends State<ProfileScreen> {
   // Dữ liệu người dùng mẫu - sau này bạn sẽ lấy từ API hoặc SharedPreferences
   final String userName = "Nguyễn Thái Thành Đạt";
   final String userEmail = "dat.nguyen@email.com";

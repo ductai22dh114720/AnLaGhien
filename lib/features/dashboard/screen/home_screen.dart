@@ -1,7 +1,7 @@
 // ignore: unused_import
 import 'dart:async'; // Cần cho Timer
 import 'package:flutter/material.dart';
-import 'package:flutter_dapm/features/dashboard/screen/infor_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
 import 'package:flutter_dapm/shared/theme/app_styles.dart';
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
@@ -30,13 +30,13 @@ final List<Map<String, String>> popularProducts = [
   },
 ];
 
-class Home extends StatefulWidget {
-  const Home({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
   @override
-  State<Home> createState() => _HomeState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeState extends State<Home> {
+class _HomeScreenState extends State<HomeScreen> {
   bool burger = false;
   bool pizza = false;
   bool burrito = false;
@@ -77,9 +77,9 @@ class _HomeState extends State<Home> {
                 title: Text('Trang Cá Nhân'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (context) => Infor()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => ProfileScreen()),
+                  );
                 },
               ),
               ListTile(
@@ -87,9 +87,9 @@ class _HomeState extends State<Home> {
                 title: Text('Trang Đặt Hàng'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (context) => Order()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => OrderScreen()),
+                  );
                 },
               ),
             ],

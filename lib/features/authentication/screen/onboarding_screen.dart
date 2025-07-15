@@ -1,6 +1,7 @@
 import 'dart:ui'; // Import để sử dụng ImageFilter
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/authentication/screen/login_screen.dart';
+import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 
 // Model và danh sách contents giữ nguyên
 class OnboardingContent {
@@ -61,7 +62,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _navigateToLogin() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      // THAY THẾ Ở ĐÂY
+      CustomPageRoute(
+        child: const LoginScreen(),
+        type: PageTransitionType.fade,
+      ),
     );
   }
 

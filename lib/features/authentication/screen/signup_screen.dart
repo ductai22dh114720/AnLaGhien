@@ -46,10 +46,10 @@ class _SignupScreenState extends State<SignupScreen> {
       return; // Nếu không hợp lệ, dừng lại
     }
     // Nếu hợp lệ, tiếp tục xử lý
-    print("Form hợp lệ!");
-    print("Tên: ${_nameController.text}");
-    print("Ngày sinh: ${_dobController.text}");
-    print("Giới tính: $_selectedGender");
+    debugPrint("Form hợp lệ!");
+    debugPrint("Tên: ${_nameController.text}");
+    debugPrint("Ngày sinh: ${_dobController.text}");
+    debugPrint("Giới tính: $_selectedGender");
     // ... Lấy các thông tin khác và gọi API đăng ký tại đây
   }
 

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class Wallet extends StatefulWidget {
-  const Wallet({super.key});
+class WalletScreen extends StatefulWidget {
+  const WalletScreen({super.key});
 
   @override
-  State<Wallet> createState() => _WalletState();
+  State<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _WalletState extends State<Wallet> {
+class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return const Placeholder();

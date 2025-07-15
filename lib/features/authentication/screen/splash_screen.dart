@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/authentication/screen/onboarding_screen.dart';
+import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,11 +35,14 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animationController.forward();
 
-    // Hẹn giờ và luôn chuyển đến OnboardingScreen
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          // THAY THẾ Ở ĐÂY
+          CustomPageRoute(
+            child: const OnboardingScreen(),
+            type: PageTransitionType.fade,
+          ),
         );
       }
     });

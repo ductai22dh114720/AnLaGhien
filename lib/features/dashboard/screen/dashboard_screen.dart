@@ -1,21 +1,27 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/dashboard/screen/home_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/infor_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/wallet_screen.dart';
 
-class BottomNavi extends StatefulWidget {
-  const BottomNavi({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<BottomNavi> createState() => _BottomNaviState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _BottomNaviState extends State<BottomNavi> {
+class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [Home(), Order(), Wallet(), Infor()];
+  // Sửa lại tên các class màn hình con cho đúng
+  final List<Widget> _pages = [
+    const HomeScreen(),
+    const OrderScreen(),
+    const WalletScreen(),
+    const ProfileScreen(),
+  ];
 
   // Hàm xây dựng item cho thanh điều hướng, đã được tối ưu cho bảng màu
   Widget _buildNavItem(IconData iconData, String text, int index) {
