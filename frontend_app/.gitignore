@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# =================
+# Backend - Node.js
+# =================
+
+# Dependencies
+/backend/node_modules
+
+# Misc
+/backend/.env
+/backend/.env.*
+/backend/npm-debug.log*
+/backend/yarn-debug.log*
+/backend/yarn-error.log*
