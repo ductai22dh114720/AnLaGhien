@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-// Import các màn hình liên quan
 import 'package:flutter_dapm/features/authentication/screen/signup_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/dashboard_screen.dart';
-// Sửa lại đường dẫn đến dashboard_screen.dart của bạn
 import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:dio/dio.dart';
 
-// PHẢI LÀ STATEFULWIDGET
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -28,14 +27,62 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      // SỬ DỤNG CÁCH KHỞI TẠO CŨ
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      // SỬ DỤNG PHƯƠNG THỨC signIn() TRÊN INSTANCE
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // Người dùng đã hủy
+        debugPrint("Đăng nhập Google đã bị hủy.");
+        return;
+      }
+
+      // Lấy ID Token
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        debugPrint("Không lấy được ID Token từ Google.");
+        return;
+      }
+
+      // Gửi ID Token lên backend
+      final dio = Dio();
+      // QUAN TRỌNG: Thay 'localhost' bằng IP của máy tính bạn
+      const String apiUrl =
+          'http://10.21.6.153:5000/api/auth/google'; // Ví dụ IP
+
+      final response = await dio.post(apiUrl, data: {'idToken': idToken});
+
+      if (response.statusCode == 200) {
+        final jwtToken = response.data['token'];
+        debugPrint("Đăng nhập backend thành công. JWT Token: $jwtToken");
+
+        // TODO: Lưu jwtToken vào flutter_secure_storage
+
+        // Điều hướng đến trang chủ
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        }
+      }
+    } catch (error) {
+      debugPrint("Đã có lỗi xảy ra khi đăng nhập bằng Google: $error");
+      // TODO: Hiển thị thông báo lỗi cho người dùng
+    }
+  }
+
   void _handleLogin() {
     if (_formKey.currentState?.validate() == true) {
       // Logic đăng nhập thành công
       debugPrint("Email: ${_emailController.text}");
       debugPrint("Password: ${_passwordController.text}");
-
-      // TODO: Gọi API đăng nhập ở đây
-
       // Sau khi đăng nhập thành công, chuyển đến màn hình chính
       Navigator.of(context).pushReplacement(
         // THAY THẾ Ở ĐÂY
@@ -206,10 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Nút Đăng nhập với Google
                   OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Gọi API đăng nhập bằng Gmail
-                      print("Đăng nhập bằng Google");
-                    },
+                    onPressed: _handleGoogleSignIn,
                     icon: Image.asset('assets/google_logo.png', height: 24),
                     label: const Text(
                       'Google',

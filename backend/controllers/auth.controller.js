@@ -2,6 +2,10 @@
 const User = require('../models/user.model');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+// Khởi tạo client với ID từ file .env
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.signup = async (req, res) => {
   try {
@@ -74,3 +78,58 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: 'Đã có lỗi xảy ra.', error: error.message });
   }
 };
+// --- THÊM HÀM MỚI NÀY VÀO ---
+exports.googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    // Xác thực idToken với Google
+     const ticket = await client.verifyIdToken({
+      idToken,
+      audience: [
+        process.env.GOOGLE_CLIENT_ID, // 1. Client ID của Web (dành cho backend)
+        '204589392826-opp8jtqrblptiq4c2soqogfcnfv7oru7.apps.googleusercontent.com'      // 2. Client ID của Android
+      ],
+    });
+
+    const { name, email } = ticket.getPayload();
+
+    // Kiểm tra user trong DB
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Nếu user không tồn tại, tạo mới
+      // Mật khẩu này chỉ là placeholder vì schema yêu cầu, user không dùng nó.
+      const password = email + process.env.JWT_SECRET;
+      
+      user = new User({
+        name,
+        email,
+        password: password, // Schema yêu cầu, nhưng ta có thể không hash
+        phone: 'N/A', 
+        address: 'N/A', 
+      });
+      await user.save();
+    }
+
+    // Tạo JWT Token của riêng bạn và trả về cho client
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    const userResult = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+    };
+
+    res.status(200).json({ token, user: userResult, message: "Đăng nhập Google thành công" });
+
+  } catch (error) {
+    console.error("Lỗi xác thực Google:", error);
+    res.status(500).json({ message: 'Xác thực Google thất bại.', error: error.message });
+  }
+};
+
