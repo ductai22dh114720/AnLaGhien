@@ -17,6 +17,17 @@ exports.signup = async (req, res) => {
       return res.status(400).json({ message: 'Email đã được sử dụng.' });
     }
 
+    // Chuyển đổi dob từ "dd/MM/yyyy" sang Date object
+    // Lưu ý: Cần xử lý cẩn thận múi giờ
+    let dobDate = null;
+    if (dob && typeof dob === 'string') {
+      const parts = dob.split('/');
+      if (parts.length === 3) {
+        // parts[1] - 1 vì tháng trong JavaScript bắt đầu từ 0
+        dobDate = new Date(Date.UTC(parts[2], parts[1] - 1, parts[0]));
+      }
+    }
+
     // 2. Mã hóa mật khẩu
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -37,6 +48,7 @@ exports.signup = async (req, res) => {
     res.status(201).json({ message: 'Đăng ký thành công!' });
 
   } catch (error) {
+    console.error("Lỗi khi đăng ký:", error); 
     res.status(500).json({ message: 'Đã có lỗi xảy ra.', error: error.message });
   }
 };

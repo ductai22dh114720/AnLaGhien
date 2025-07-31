@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dapm/features/authentication/screen/login_screen.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,22 +14,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Dữ liệu người dùng mẫu - sau này bạn sẽ lấy từ API hoặc SharedPreferences
   final String userName = "Nguyễn Thái Thành Đạt";
   final String userEmail = "dat.nguyen@email.com";
-  final String avatarUrl =
-      "https://i.pravatar.cc/150?img=12"; // URL ảnh đại diện mẫu
+  final String avatarUrl = "https://i.pravatar.cc/150?img=12";
+
+  // --- HÀM MỚI ĐỂ XỬ LÝ LOGIC ĐĂNG XUẤT ---
+  Future<void> _performLogout() async {
+    // 1. Xóa token đã lưu
+    final box = GetStorage();
+    // Giả sử bạn lưu token với key là 'jwt_token' sau khi đăng nhập thành công
+    await box.remove('jwt_token');
+
+    // 2. Đăng xuất khỏi tài khoản Google (nếu cần)
+    // Dòng này đảm bảo lần sau khi nhấn "Đăng nhập với Google", cửa sổ chọn tài khoản sẽ hiện lại.
+    await GoogleSignIn().signOut();
+
+    // 3. Điều hướng về trang Login và xóa hết các màn hình cũ
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        // Dùng MaterialPageRoute hoặc CustomPageRoute tùy bạn
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (Route<dynamic> route) => false, // Xóa tất cả các route trước đó
+      );
+    }
+  }
+
+  // --- HÀM MỚI ĐỂ HIỂN THỊ DIALOG XÁC NHẬN ---
+  void _showLogoutConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          title: const Text('Xác nhận Đăng xuất'),
+          content: const Text(
+            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Hủy', style: TextStyle(color: Colors.grey[700])),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Đóng dialog
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    Colors.red, // Dùng màu đỏ cho hành động nguy hiểm
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Đóng dialog trước
+                _performLogout(); // Sau đó thực hiện đăng xuất
+              },
+              child: const Text(
+                'Đăng xuất',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Sử dụng màu nền xám nhạt để làm nổi bật các Card
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "TÀI KHOẢN CỦA TÔI",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.transparent, // Nền trong suốt
-        foregroundColor: Colors.black, // Màu chữ và icon là màu đen
-        elevation: 0, // Bỏ shadow cho hiện đại
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
+        elevation: 0,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -34,40 +99,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // --- PHẦN THÔNG TIN NGƯỜI DÙNG ---
               _buildProfileHeader(),
               const SizedBox(height: 30),
-
-              // --- NHÓM CHỨC NĂNG TÀI KHOẢN ---
               _buildSettingsGroup(
                 title: "Tài khoản",
                 children: [
                   _buildProfileOption(
                     icon: Icons.person_outline,
                     title: "Thông tin cá nhân",
-                    onTap: () {
-                      // Điều hướng đến trang sửa thông tin
-                    },
+                    onTap: () {},
                   ),
                   _buildProfileOption(
                     icon: Icons.location_on_outlined,
                     title: "Địa chỉ của tôi",
-                    onTap: () {
-                      // Điều hướng đến trang quản lý địa chỉ
-                    },
+                    onTap: () {},
                   ),
                   _buildProfileOption(
                     icon: Icons.receipt_long_outlined,
                     title: "Lịch sử đơn hàng",
-                    onTap: () {
-                      // Điều hướng đến trang lịch sử đơn hàng
-                    },
+                    onTap: () {},
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // --- NHÓM CHỨC NĂNG HỖ TRỢ & CÀI ĐẶT ---
               _buildSettingsGroup(
                 title: "Hỗ trợ & Cài đặt",
                 children: [
@@ -89,8 +143,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-
-              // --- NÚT ĐĂNG XUẤT ---
               _buildLogoutButton(),
             ],
           ),
@@ -99,7 +151,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget header chứa avatar và tên người dùng
+  // --- CÁC WIDGET HELPER ---
+
   Widget _buildProfileHeader() {
     return Column(
       children: [
@@ -111,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 12),
         Text(
           userName,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.black,
@@ -126,7 +179,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget để tạo một nhóm các mục cài đặt
   Widget _buildSettingsGroup({
     required String title,
     required List<Widget> children,
@@ -146,13 +198,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         Card(
-          elevation: 4,
+          elevation: 2, // Giảm elevation cho tinh tế hơn
           shadowColor: Colors.black12,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15.0),
           ),
           child: Column(
-            // Dùng List.generate để tự động thêm Divider
             children: List.generate(children.length, (index) {
               return Column(
                 children: [
@@ -168,7 +219,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget để tạo một mục lựa chọn trong danh sách
   Widget _buildProfileOption({
     required IconData icon,
     required String title,
@@ -176,13 +226,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(
-        icon,
-        color: Colors.deepOrange, // Màu nhấn chủ đạo
-      ),
+      leading: Icon(icon, color: Colors.deepOrange),
       title: Text(
         title,
-        style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+        style: const TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       trailing: Icon(
         Icons.arrow_forward_ios,
@@ -192,25 +242,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget riêng cho nút đăng xuất
+  // SỬA LẠI HÀM NÀY ĐỂ GỌI DIALOG
   Widget _buildLogoutButton() {
     return Card(
-      elevation: 4,
+      elevation: 2,
       shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
       child: ListTile(
-        onTap: () {
-          // Hiển thị dialog xác nhận đăng xuất
-          print("Đã nhấn nút Đăng xuất");
-        },
-        leading: Icon(Icons.logout, color: Colors.deepOrange),
-        title: Text(
+        onTap: _showLogoutConfirmationDialog, // <-- Thay đổi ở đây
+        leading: const Icon(
+          Icons.logout,
+          color: Colors.red,
+        ), // Dùng màu đỏ cho icon
+        title: const Text(
           "Đăng xuất",
           style: TextStyle(
-            color:
-                Colors.deepOrange, // Màu chữ đặc biệt cho hành động nguy hiểm
+            color: Colors.red,
             fontWeight: FontWeight.bold,
-          ),
+          ), // Dùng màu đỏ cho text
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_dapm/features/authentication/screen/signup_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/dashboard_screen.dart';
 import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:dio/dio.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -54,8 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Gửi ID Token lên backend
       final dio = Dio();
       // QUAN TRỌNG: Thay 'localhost' bằng IP của máy tính bạn
-      const String apiUrl =
-          'http://10.21.6.153:5000/api/auth/google'; // Ví dụ IP
+      const String apiUrl = '${ApiConfig.baseUrl}/auth/google'; // Ví dụ IP
 
       final response = await dio.post(apiUrl, data: {'idToken': idToken});
 

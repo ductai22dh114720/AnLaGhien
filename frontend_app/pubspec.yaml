@@ -15,6 +15,7 @@ dependencies:
   get_storage: ^2.1.1 
   google_sign_in: ^6.2.1
   dio: ^5.8.0+1
+  equatable: ^2.0.5
   
 dev_dependencies:
   flutter_test:
@@ -35,3 +36,7 @@ flutter:
     - assets/onboarding_2.png
     - assets/onboarding_3.png
     - assets/google_logo.png
+    - assets/momo_logo.png
+    - assets/vnpay_logo.png
+    - assets/bank.png
+
