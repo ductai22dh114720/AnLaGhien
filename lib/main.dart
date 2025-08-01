@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dapm/page/botomnavigationbar.dart';
+import 'package:flutter_dapm/features/authentication/screen/splash_screen.dart';
 
+// KHÔNG cần async và GetStorage.init() nữa
 void main() {
-  runApp(const MainApp());
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FOOD',
-      theme: ThemeData(
-        primarySwatch: Colors.cyan,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      title: 'Food App',
       debugShowCheckedModeBanner: false,
-      home: BottomNavi(),
+      theme: ThemeData(
+        primarySwatch: Colors.deepOrange,
+        scaffoldBackgroundColor: Colors.white,
+        fontFamily: 'Poppins',
+      ),
+      home: const SplashScreen(),
     );
   }
 }
