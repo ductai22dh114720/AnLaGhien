@@ -1,10 +1,11 @@
 // ignore: unused_import
 import 'dart:async'; // Cần cho Timer
 import 'package:flutter/material.dart';
+import 'package:flutter_dapm/features/authentication/screen/details_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
-import 'package:flutter_dapm/shared/theme/app_styles.dart';
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
+import 'package:flutter_dapm/shared/theme/app_styles.dart';
 
 // Dữ liệu mẫu cho slider
 final List<Map<String, String>> popularProducts = [
@@ -102,22 +103,37 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Danh Mục', style: WidgetSupport.HeadlineTextFeildStyle()),
+              Text('Danh Mục', style: AppStyles.headlineTextFeildStyle()),
               SizedBox(height: 20.0),
               _buildCategorySelector(),
               SizedBox(height: 30.0),
 
               // CẢI TIẾN 1: THAY THẾ BẰNG CAROUSEL SLIDER
-              Text('Phổ biến', style: WidgetSupport.HeadlineTextFeildStyle()),
+              Text('Phổ biến', style: AppStyles.headlineTextFeildStyle()),
               SizedBox(height: 10.0),
               CarouselSlider.builder(
                 itemCount: popularProducts.length,
                 itemBuilder: (context, index, realIndex) {
                   final product = popularProducts[index];
-                  return _buildHorizontalProductCard(
-                    product['image']!,
-                    product['title']!,
-                    product['price']!,
+                  // return _buildHorizontalProductCard(
+                  //   product['image']!,
+                  //   product['title']!,
+                  //   product['price']!,
+                  // );
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DetailsScreen(),
+                        ),
+                      );
+                    },
+                    child: _buildHorizontalProductCard(
+                      product['image']!,
+                      product['title']!,
+                      product['price']!,
+                    ),
                   );
                 },
                 options: CarouselOptions(
@@ -135,28 +151,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
               Text(
                 'Gợi ý cho bạn',
-                style: WidgetSupport.HeadlineTextFeildStyle(),
+                style: AppStyles.headlineTextFeildStyle(),
               ),
               SizedBox(height: 10.0),
-              _buildVerticalProductCard(
-                'assets/burger_2gagion.jpg',
-                'Combo Burger Gà + Khoai',
-                'Tiết kiệm hơn',
-                '55.000đ',
+
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DetailsScreen()),
+                  );
+                },
+                child: _buildVerticalProductCard(
+                  'assets/burger_2gagion.jpg',
+                  'Combo Burger Gà + Khoai',
+                  'Tiết kiệm hơn',
+                  '55.000đ',
+                ),
               ),
               SizedBox(height: 15.0),
-              _buildVerticalProductCard(
-                'assets/burger_2gagion.jpg',
-                'Combo Gia Đình',
-                '2 Burger + 2 Nước',
-                '99.000đ',
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DetailsScreen()),
+                  );
+                },
+                child: _buildVerticalProductCard(
+                  'assets/burger_2gagion.jpg',
+                  'Combo Gia Đình',
+                  '2 Burger + 2 Nước',
+                  '99.000đ',
+                ),
               ),
               SizedBox(height: 15.0),
-              _buildVerticalProductCard(
-                'assets/burger_2gagion.jpg',
-                'Burger Tôm Hùm',
-                'Hương vị cao cấp',
-                '150.000đ',
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DetailsScreen()),
+                  );
+                },
+                child: _buildVerticalProductCard(
+                  'assets/burger_2gagion.jpg',
+                  'Burger Tôm Hùm',
+                  'Hương vị cao cấp',
+                  '150.000đ',
+                ),
               ),
             ],
           ),
@@ -167,11 +208,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Widget cho các thẻ sản phẩm cuộn dọc (không thay đổi)
   Widget _buildVerticalProductCard(
-    String imagePath,
-    String title,
-    String subtitle,
-    String price,
-  ) {
+      String imagePath,
+      String title,
+      String subtitle,
+      String price,
+      ) {
     return Material(
       color: Colors.white, // Đảm bảo thẻ luôn màu trắng
       elevation: 3.0, // Giảm độ nổi một chút cho tinh tế
@@ -196,11 +237,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 10.0),
-                  Text(title, style: WidgetSupport.boldTextFeildStyle()),
+                  Text(title, style: AppStyles.boldTextFeildStyle()),
                   SizedBox(height: 5.0),
-                  Text(subtitle, style: WidgetSupport.LightTextFeildStyle()),
+                  Text(subtitle, style: AppStyles.lightTextFeildStyle()),
                   SizedBox(height: 10.0),
-                  Text(price, style: WidgetSupport.boldTextFeildStyle()),
+                  Text(price, style: AppStyles.boldTextFeildStyle()),
                 ],
               ),
             ),
@@ -212,10 +253,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Widget cho các thẻ sản phẩm cuộn ngang (trong slider)
   Widget _buildHorizontalProductCard(
-    String imagePath,
-    String title,
-    String price,
-  ) {
+      String imagePath,
+      String title,
+      String price,
+      ) {
     return Container(
       // Bỏ margin ở đây vì CarouselSlider đã có khoảng cách
       child: Material(
@@ -239,9 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               SizedBox(height: 10.0),
-              Text(title, style: WidgetSupport.boldTextFeildStyle()),
+              Text(title, style: AppStyles.boldTextFeildStyle()),
               SizedBox(height: 5.0),
-              Text(price, style: WidgetSupport.boldTextFeildStyle()),
+              Text(price, style: AppStyles.boldTextFeildStyle()),
             ],
           ),
         ),
@@ -255,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildCategoryIcon(
-          () => setState(() {
+              () => setState(() {
             burger = true;
             pizza = false;
             drink = false;
@@ -265,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
           burger,
         ),
         _buildCategoryIcon(
-          () => setState(() {
+              () => setState(() {
             burger = false;
             pizza = false;
             drink = false;
@@ -275,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
           burrito,
         ),
         _buildCategoryIcon(
-          () => setState(() {
+              () => setState(() {
             burger = false;
             pizza = true;
             drink = false;
@@ -285,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
           pizza,
         ),
         _buildCategoryIcon(
-          () => setState(() {
+              () => setState(() {
             burger = false;
             pizza = false;
             drink = true;
@@ -300,10 +341,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Widget con cho một icon danh mục
   Widget _buildCategoryIcon(
-    VoidCallback onTap,
-    String imagePath,
-    bool isSelected,
-  ) {
+      VoidCallback onTap,
+      String imagePath,
+      bool isSelected,
+      ) {
     return GestureDetector(
       onTap: onTap,
       child: Material(

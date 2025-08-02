@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-class WidgetSupport {
+// Đổi tên class cho đúng quy ước
+class AppStyles {
+  // Sửa tên hàm thành lowerCamelCase
   static TextStyle boldTextFeildStyle() {
-    return TextStyle(
+    return const TextStyle(
       color: Colors.black,
       fontSize: 15,
       fontWeight: FontWeight.bold,
@@ -10,8 +12,9 @@ class WidgetSupport {
     );
   }
 
-  static TextStyle HeadlineTextFeildStyle() {
-    return TextStyle(
+  // Sửa tên hàm thành lowerCamelCase
+  static TextStyle headlineTextFeildStyle() {
+    return const TextStyle(
       color: Colors.black,
       fontSize: 20,
       fontWeight: FontWeight.bold,
@@ -19,11 +22,12 @@ class WidgetSupport {
     );
   }
 
-  static TextStyle LightTextFeildStyle() {
-    return TextStyle(
-      color: Colors.black54, // Màu xám nhẹ
+  // Sửa tên hàm thành lowerCamelCase
+  static TextStyle lightTextFeildStyle() {
+    return const TextStyle(
+      color: Colors.black54,
       fontSize: 15.0,
-      fontWeight: FontWeight.w500, // Độ đậm vừa phải
+      fontWeight: FontWeight.w500,
     );
   }
 }

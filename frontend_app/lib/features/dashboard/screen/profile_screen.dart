@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/authentication/screen/login_screen.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:flutter_dapm/features/dashboard/screen/user_screen.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -107,7 +107,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildProfileOption(
                     icon: Icons.person_outline,
                     title: "Thông tin cá nhân",
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          // SỬA LẠI LỜI GỌI NÀY
+                          builder: (context) => UserScreen(
+                            userName: userName,   // <-- Truyền tên
+                            userEmail: userEmail, // <-- Truyền email
+                            avatarUrl: avatarUrl, // <-- Truyền URL avatar
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   _buildProfileOption(
                     icon: Icons.location_on_outlined,
