@@ -5,7 +5,10 @@ const VehicleSchema = new Schema({
     type: {
         type: String,
         required: true,
-        enum: ['bike', 'car', 'scooter']
+        enum: {
+            values: ['bike', 'car', 'scooter'],
+            message: '{VALUE} is not a supported vehicle type'
+        }
     },
     registrationNumber: {
         type: String,

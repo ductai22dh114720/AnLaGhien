@@ -42,8 +42,11 @@ const UserSchema = new Schema({
     UserSchema.index({ location: '2dsphere' });
     role: {
         type: String,
-        enum: ['customer', 'delivery_personnel', 'admin'], // Các vai trò có thể có
-        default: 'customer' // Mặc định là khách hàng
+        enum: { // Định nghĩa enum đúng cách
+            values: ['customer', 'delivery_personnel', 'admin'],
+            message: '{VALUE} is not a supported role' // Thông báo lỗi tùy chỉnh
+        },
+        default: 'customer'
     },
     // Các trường dành riêng cho người giao hàng
     vehicle: {

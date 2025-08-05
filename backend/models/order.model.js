@@ -39,11 +39,13 @@ const OrderSchema = new Schema({
         type: String,
         required: true
     },
-    status: {
-        type: String,
-        enum: ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'],
-        default: 'pending'
-    },
+   status: {
+       type: String,
+       enum: {
+           values: ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'],
+       },
+       default: 'pending'
+   },
     // Có thể thêm các trường khác như ghi chú của khách hàng
     notes: {
         type: String

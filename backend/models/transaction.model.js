@@ -15,12 +15,16 @@ const TransactionSchema = new Schema({
     type: {
         type: String,
         required: true,
-        enum: ['deposit', 'payment', 'refund'] // Nạp tiền, Thanh toán, Hoàn tiền
+        enum: {
+            values: ['deposit', 'payment', 'refund']
+        }
     },
     status: {
         type: String,
         required: true,
-        enum: ['pending', 'completed', 'failed'],
+        enum: {
+            values: ['pending', 'completed', 'failed'],
+        },
         default: 'pending'
     },
     paymentMethod: { // Ví dụ: 'vnpay', 'momo', 'app_wallet'
