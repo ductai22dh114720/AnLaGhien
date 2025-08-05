@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+// Thêm import cho PlatformWebViewControllerCreationParams
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+
 
 class WebViewScreen extends StatefulWidget {
   final String initialUrl;
@@ -8,7 +12,7 @@ class WebViewScreen extends StatefulWidget {
   const WebViewScreen({
     super.key,
     required this.initialUrl,
-    this.title = "Thanh toán", // Tiêu đề mặc định
+    this.title = "Thanh toán",
   });
 
   @override
@@ -23,44 +27,44 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void initState() {
     super.initState();
 
-    _controller = WebViewController()
+    // --- BẮT ĐẦU SỬA ĐỔI ---
+    late final PlatformWebViewControllerCreationParams params;
+    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+      params = WebKitWebViewControllerCreationParams(
+        allowsInlineMediaPlayback: true,
+        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+      );
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
+
+    final WebViewController controller = WebViewController.fromPlatformCreationParams(params);
+
+    controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            // Cập nhật thanh loading
+            debugPrint('WebView is loading (progress : $progress%)');
           },
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
-            debugPrint('WebView: Trang bắt đầu tải: $url');
+            setState(() => _isLoading = true);
+            debugPrint('Page started loading: $url');
           },
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
-            debugPrint('WebView: Trang tải xong: $url');
+            setState(() => _isLoading = false);
+            debugPrint('Page finished loading: $url');
 
-            // KIỂM TRA URL TRẢ VỀ TỪ VNPAY
-            // Đây là phần quan trọng để tự động đóng WebView
             if (url.contains('vnp_ResponseCode=00')) {
-              // Giao dịch thành công
               debugPrint('WebView: Giao dịch VNPay thành công!');
-              // Chờ 2 giây để người dùng đọc thông báo rồi tự động đóng
               Future.delayed(const Duration(seconds: 2), () {
-                if (mounted) {
-                  Navigator.of(context).pop('success'); // Trả về 'success'
-                }
+                if (mounted) Navigator.of(context).pop('success');
               });
-            } else if (url.contains('vnp_ResponseCode') && url.contains('vnp_ResponseCode=00') == false) {
-              // Giao dịch thất bại hoặc bị hủy
+            } else if (url.contains('vnp_ResponseCode') && !url.contains('vnp_ResponseCode=00')) {
               debugPrint('WebView: Giao dịch VNPay thất bại hoặc bị hủy.');
               Future.delayed(const Duration(seconds: 2), () {
-                if (mounted) {
-                  Navigator.of(context).pop('failed'); // Trả về 'failed'
-                }
+                if (mounted) Navigator.of(context).pop('failed');
               });
             }
           },
@@ -76,6 +80,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(widget.initialUrl));
+
+    // Thêm các cài đặt bổ sung cho Android
+    if (controller.platform is AndroidWebViewController) {
+      AndroidWebViewController.enableDebugging(true);
+      (controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
+    }
+
+    _controller = controller;
+    // --- KẾT THÚC SỬA ĐỔI ---
   }
 
   @override
@@ -91,9 +105,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
           WebViewWidget(controller: _controller),
           if (_isLoading)
             const Center(
-              child: CircularProgressIndicator(
-                color: Colors.deepOrange,
-              ),
+              child: CircularProgressIndicator(color: Colors.deepOrange),
             ),
         ],
       ),

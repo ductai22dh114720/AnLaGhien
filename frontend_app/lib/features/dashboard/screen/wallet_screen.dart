@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
-
+import 'package:flutter/material.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
+import 'package:flutter_dapm/shared/models/transaction_model.dart';
 import 'package:flutter_dapm/shared/screens/webview_screen.dart';
+import 'package:flutter_dapm/shared/services/wallet_service.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:intl/intl.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -13,61 +15,89 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  // --- DỮ LIỆU MẪU ---
-  final String userName = "Nguyễn Thái Thành Đạt";
-  double currentBalance = 250000;
-  final List<Map<String, dynamic>> transactionHistory = [
-    {'type': 'Nạp tiền', 'amount': 100000, 'date': DateTime(2024, 7, 28, 10, 30), 'method': 'VNPay'},
-    {'type': 'Thanh toán đơn hàng', 'amount': -45000, 'date': DateTime(2024, 7, 27, 18, 45), 'orderId': '#12345'},
-  ];
-
+  final _walletService = WalletService();
+  late Future<Map<String, dynamic>?> _walletInfoFuture;
   final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
-  // --- HÀM LOGIC XỬ LÝ SỰ KIỆN ---
+  // Biến để lưu tên người dùng
+  String _userName = "User";
 
-  void _handleTopUpWithMoMo() {
-    debugPrint('Nạp tiền bằng MoMo');
-    // TODO: Tích hợp MoMo
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
   }
 
-  void _handleTopUpWithBank() {
-    debugPrint('Nạp tiền bằng Ngân hàng');
+  // Hàm để tải cả thông tin ví và tên người dùng
+  void _loadInitialData() {
+    _loadUserName();
+    _loadWalletInfo();
+  }
+
+  void _loadUserName() {
+    final box = GetStorage();
+    // Giả sử bạn đã lưu tên user vào GetStorage với key 'user_name' lúc đăng nhập
+    final savedName = box.read<String>('user_name');
+    if (savedName != null) {
+      setState(() {
+        _userName = savedName;
+      });
+    }
+  }
+
+  void _loadWalletInfo() {
+    setState(() {
+      _walletInfoFuture = _walletService.getWalletInfo();
+    });
   }
 
   Future<void> _handleTopUpWithVnpay() async {
     const int amount = 50000;
-
     try {
       final dio = Dio();
       const String apiUrl = '${ApiConfig.baseUrl}/payment/vnpay-create';
       final response = await dio.post(apiUrl, data: {'amount': amount});
 
-      // Kiểm tra context trước khi sử dụng
       if (!mounted) return;
-
       if (response.statusCode == 200 && response.data['paymentUrl'] != null) {
         final String paymentUrl = response.data['paymentUrl'];
-
         final result = await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => WebViewScreen(initialUrl: paymentUrl, title: 'Thanh toán VNPay'),
+            builder:
+                (context) => WebViewScreen(
+                  initialUrl: paymentUrl,
+                  title: 'Thanh toán VNPay',
+                ),
           ),
         );
 
-        // Kiểm tra context lần nữa sau khi quay về từ WebView
         if (!mounted) return;
-
         if (result == 'success') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nạp tiền thành công!'), backgroundColor: Colors.green));
-          // TODO: Gọi API để cập nhật lại số dư ví và refresh UI
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Nạp tiền thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadWalletInfo(); // Sửa ở đây: Gọi lại hàm tải dữ liệu
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Giao dịch đã bị hủy hoặc thất bại.'), backgroundColor: Colors.orange));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Giao dịch đã bị hủy hoặc thất bại.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         }
       }
     } on DioException catch (e) {
       debugPrint('Lỗi khi gọi API VNPay: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể tạo yêu cầu thanh toán.'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể tạo yêu cầu thanh toán.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -79,81 +109,110 @@ class _WalletScreenState extends State<WalletScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text("VÍ CỦA TÔI", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "VÍ CỦA TÔI",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildBalanceCard(),
-              const SizedBox(height: 30),
-              _buildTopUpSection(),
-              const SizedBox(height: 30),
-              _buildTransactionHistory(),
-            ],
-          ),
-        ),
+      body: FutureBuilder<Map<String, dynamic>?>(
+        future: _walletInfoFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+            return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Text("Không thể tải dữ liệu ví."), ElevatedButton(onPressed: _loadWalletInfo, child: const Text("Thử lại"))]));
+          }
+
+          final walletData = snapshot.data!;
+          final double balance = (walletData['balance'] as num).toDouble();
+          final List<TransactionModel> transactions = walletData['transactions'];
+
+          return RefreshIndicator(
+            onRefresh: () async => _loadWalletInfo(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildBalanceCard(_userName, balance), // <-- Truyền tên và số dư thật
+                    const SizedBox(height: 30),
+                    _buildTopUpSection(),
+                    const SizedBox(height: 30),
+                    _buildTransactionHistory(transactions), // <-- Truyền danh sách giao dịch thật
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
   // --- WIDGETS HELPER ---
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(String userName, double balance) {
     return Card(
       elevation: 5,
-      shadowColor: Colors.deepOrange.withAlpha(50), // Sửa lỗi deprecated
+      shadowColor: Colors.deepOrange.withAlpha(50),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
-        width: double.infinity, // Đảm bảo card chiếm hết chiều rộng
+        width: double.infinity,
         padding: const EdgeInsets.all(24.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [Colors.deepOrange, Colors.orange.shade700],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: LinearGradient(colors: [Colors.deepOrange, Colors.orange.shade700], begin: Alignment.topLeft, end: Alignment.bottomRight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(userName, style: TextStyle(fontSize: 18, color: Colors.white.withAlpha(230))), // Sửa lỗi deprecated
+            Text(userName, style: TextStyle(fontSize: 18, color: Colors.white.withAlpha(230))),
             const SizedBox(height: 10),
-            Text(currencyFormatter.format(currentBalance), style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(currencyFormatter.format(balance), style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 4),
-            Text('Số dư hiện tại', style: TextStyle(fontSize: 14, color: Colors.white.withAlpha(204))), // Sửa lỗi deprecated
+            Text('Số dư hiện tại', style: TextStyle(fontSize: 14, color: Colors.white.withAlpha(204))),
           ],
         ),
       ),
     );
   }
 
+
   Widget _buildTopUpSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Nạp tiền vào ví", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          "Nạp tiền vào ví",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildPaymentMethodButton('assets/momo_logo.png', 'MoMo', _handleTopUpWithMoMo),
-            _buildPaymentMethodButton('assets/vnpay_logo.png', 'VNPay', _handleTopUpWithVnpay),
-            _buildPaymentMethodButton('assets/bank.png', 'Ngân hàng', _handleTopUpWithBank),
+            _buildPaymentMethodButton(
+              'assets/vnpay_logo.png',
+              'VNPay',
+              _handleTopUpWithVnpay,
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildPaymentMethodButton(String assetPath, String label, VoidCallback onPressed) {
+  Widget _buildPaymentMethodButton(
+    String assetPath,
+    String label,
+    VoidCallback onPressed,
+  ) {
     return Column(
       children: [
         InkWell(
@@ -162,12 +221,16 @@ class _WalletScreenState extends State<WalletScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(color: Colors.grey.withAlpha(25), spreadRadius: 1, blurRadius: 5) // Sửa lỗi deprecated
-                ]
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withAlpha(25),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                ), // Sửa lỗi deprecated
+              ],
             ),
             child: Image.asset(assetPath, width: 40, height: 40),
           ),
@@ -177,50 +240,37 @@ class _WalletScreenState extends State<WalletScreen> {
       ],
     );
   }
-  Widget _buildTransactionHistory() {
+
+  Widget _buildTransactionHistory(List<TransactionModel> transactions) {
+    if (transactions.isEmpty) {
+      return const Center(child: Text("Chưa có giao dịch nào."));
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Lịch sử giao dịch",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        const Text("Lịch sử giao dịch", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        // Dùng ListView.builder nếu danh sách dài
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactionHistory.length,
+          itemCount: transactions.length, // <-- Dùng transactions.length
           itemBuilder: (context, index) {
-            final transaction = transactionHistory[index];
-            bool isCredit = transaction['amount'] > 0; // Giao dịch cộng tiền
+            final transaction = transactions[index]; // <-- Lấy từ danh sách thật
+            bool isCredit = transaction.amount > 0;
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor:
-                    isCredit ? Colors.green.shade100 : Colors.red.shade100,
-                child: Icon(
-                  isCredit ? Icons.add : Icons.remove,
-                  color: isCredit ? Colors.green : Colors.red,
-                ),
+                backgroundColor: isCredit ? Colors.green.shade100 : Colors.red.shade100,
+                child: Icon(isCredit ? Icons.add : Icons.remove, color: isCredit ? Colors.green : Colors.red),
               ),
-              title: Text(
-                transaction['type'],
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                DateFormat('dd/MM/yyyy, HH:mm').format(transaction['date']),
-              ),
+              title: Text(transaction.type == 'deposit' ? 'Nạp tiền' : 'Thanh toán', style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(DateFormat('dd/MM/yyyy, HH:mm').format(transaction.createdAt)),
               trailing: Text(
-                '${isCredit ? '+' : ''}${currencyFormatter.format(transaction['amount'])}',
-                style: TextStyle(
-                  color: isCredit ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
+                '${isCredit ? '+' : ''}${currencyFormatter.format(transaction.amount)}',
+                style: TextStyle(color: isCredit ? Colors.green : Colors.red, fontWeight: FontWeight.bold),
               ),
             );
           },
-          separatorBuilder:
-              (context, index) => const Divider(indent: 16, endIndent: 16),
+          separatorBuilder: (context, index) => const Divider(indent: 16, endIndent: 16),
         ),
       ],
     );
