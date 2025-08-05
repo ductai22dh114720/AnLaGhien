@@ -10,20 +10,20 @@ const UserSchema = new Schema({
         type: String, 
         required: true, 
         unique: true,
-        trim: true, // Bỏ khoảng trắng thừa
-        lowercase: true // Luôn lưu email ở dạng chữ thường
+        trim: true,
+        lowercase: true
     },
-    password: { 
-        type: String, 
-        required: true 
+    password: {
+        type: String,
+        required: true
     },
-    phone: { 
-        type: String, 
-        required: true 
+    phone: {
+        type: String,
+        // Bỏ required để user Google có thể đăng ký mà không cần SĐT ban đầu
     },
-    address: { 
-        type: String, 
-        required: true 
+    address: {
+        type: String,
+        // Bỏ required để user Google có thể đăng ký mà không cần địa chỉ ban đầu
     },
     location: {
         type: {
@@ -35,31 +35,32 @@ const UserSchema = new Schema({
           type: [Number], // [longitude, latitude]
           default: [0, 0]
         }
-      }
-    }, { timestamps: true });
-
-    // Tạo một chỉ mục 2dsphere để tối ưu hóa truy vấn địa lý
-    UserSchema.index({ location: '2dsphere' });
+    },
     role: {
         type: String,
-        enum: {
-            values: ['customer', 'delivery_personnel', 'admin'],
-            message: '{VALUE} is not a supported role' // Thông báo lỗi tùy chỉnh
-        },
+        enum: ['customer', 'delivery_personnel', 'admin'],
         default: 'customer'
     },
     // Các trường dành riêng cho người giao hàng
     vehicle: {
         type: Schema.Types.ObjectId,
-        ref: 'Vehicle' // Tham chiếu đến model Vehicle
+        ref: 'Vehicle'
     },
     availabilityStatus: {
         type: String,
         enum: ['available', 'unavailable', 'on_delivery'],
         default: 'unavailable'
+    },
+    avatarUrl: { // Thêm trường avatar
+        type: String,
+        default: ''
     }
-}, { 
-    timestamps: true // Tự động thêm createdAt và updatedAt
+// Dấu ngoặc đóng của schema phải ở đây, chỉ có một khối timestamps
+}, {
+    timestamps: true
 });
+
+// UserSchema.index phải được gọi sau khi đã định nghĩa xong Schema
+UserSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('User', UserSchema);
