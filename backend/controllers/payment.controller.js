@@ -1,15 +1,12 @@
-// File: backend/controllers/payment.controller.js
+
 
 const moment = require('moment');
 const querystring = require('qs');
 const crypto = require("crypto");
 
-// TODO: Sau này, bạn sẽ tạo các bản ghi Transaction trong DB ở đây
-
 exports.createVnpayPayment = async (req, res) => {
     try {
-        // Tắt CORS cho môi trường test (nếu cần, nhưng Render thường tự xử lý)
-        res.header('Access-Control-Allow-Origin', '*');
+        process.env.TZ = 'Asia/Ho_Chi_Minh'; // Set múi giờ Việt Nam
 
         const ipAddr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
         const secretKey = process.env.VNPAY_HASH_SECRET;
@@ -18,39 +15,51 @@ exports.createVnpayPayment = async (req, res) => {
 
         const date = new Date();
         const createDate = moment(date).format('YYYYMMDDHHmmss');
-        const orderId = moment(date).format('HHmmss'); // Mã đơn hàng ngắn gọn
+        const orderId = moment(date).format('HHmmss');
+
+        const amount = req.body.amount;
+        const bankCode = req.body.bankCode || '';
+        // Quan trọng: Mã hóa orderInfo để tránh lỗi với ký tự đặc biệt/tiếng Việt
+        const orderInfo = Buffer.from(req.body.orderDescription || 'Thanh toan don hang', 'utf8').toString();
+        const orderType = req.body.orderType || 'other';
+        const locale = 'vn';
 
         let vnp_Params = {};
         vnp_Params['vnp_Version'] = '2.1.0';
         vnp_Params['vnp_Command'] = 'pay';
         vnp_Params['vnp_TmnCode'] = process.env.VNPAY_TMN_CODE;
-        vnp_Params['vnp_Amount'] = req.body.amount * 100;
-        vnp_Params['vnp_CreateDate'] = createDate;
+        vnp_Params['vnp_Locale'] = locale;
         vnp_Params['vnp_CurrCode'] = 'VND';
-        vnp_Params['vnp_IpAddr'] = ipAddr;
-        vnp_Params['vnp_Locale'] = 'vn';
-        vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + orderId;
-        vnp_Params['vnp_OrderType'] = 'other'; // Hoặc 'billpayment'
-        vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_TxnRef'] = orderId;
+        vnp_Params['vnp_OrderInfo'] = orderInfo;
+        vnp_Params['vnp_OrderType'] = orderType;
+        vnp_Params['vnp_Amount'] = amount * 100;
+        vnp_Params['vnp_ReturnUrl'] = returnUrl;
+        vnp_Params['vnp_IpAddr'] = ipAddr;
+        vnp_Params['vnp_CreateDate'] = createDate;
+        if (bankCode !== '') {
+            vnp_Params['vnp_BankCode'] = bankCode;
+        }
 
-        // Sắp xếp các tham số theo thứ tự ABC
         const sortedParams = {};
         Object.keys(vnp_Params).sort().forEach(key => {
             sortedParams[key] = vnp_Params[key];
         });
 
-        // Tạo chuỗi query string không mã hóa
         const signData = querystring.stringify(sortedParams, { encode: false });
 
-        // Tạo chữ ký SHA512
+        // --- CÁC DÒNG LOG ĐỂ DEBUG ---
+        console.log("==================== DEBUG VNPAY SIGNATURE ====================");
+        console.log("VNPAY_HASH_SECRET (first 5 chars):", secretKey ? secretKey.substring(0, 5) : "NOT FOUND");
+        console.log("Sorted Params:", sortedParams);
+        console.log("String to Hash (signData):", signData);
+        // --- KẾT THÚC DEBUG ---
+
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-        // Thêm chữ ký vào tham số
         sortedParams['vnp_SecureHash'] = signed;
 
-        // Tạo URL cuối cùng có mã hóa
         vnpUrl += '?' + querystring.stringify(sortedParams, { encode: true });
 
         res.status(200).json({ paymentUrl: vnpUrl });
