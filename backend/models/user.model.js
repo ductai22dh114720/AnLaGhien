@@ -42,7 +42,7 @@ const UserSchema = new Schema({
     UserSchema.index({ location: '2dsphere' });
     role: {
         type: String,
-        enum: { // Định nghĩa enum đúng cách
+        enum: {
             values: ['customer', 'delivery_personnel', 'admin'],
             message: '{VALUE} is not a supported role' // Thông báo lỗi tùy chỉnh
         },
