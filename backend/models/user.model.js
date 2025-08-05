@@ -25,6 +25,21 @@ const UserSchema = new Schema({
         type: String, 
         required: true 
     },
+    location: {
+        type: {
+          type: String,
+          enum: ['Point'],
+          default: 'Point'
+        },
+        coordinates: {
+          type: [Number], // [longitude, latitude]
+          default: [0, 0]
+        }
+      }
+    }, { timestamps: true });
+
+    // Tạo một chỉ mục 2dsphere để tối ưu hóa truy vấn địa lý
+    UserSchema.index({ location: '2dsphere' });
     role: {
         type: String,
         enum: ['customer', 'delivery_personnel', 'admin'], // Các vai trò có thể có

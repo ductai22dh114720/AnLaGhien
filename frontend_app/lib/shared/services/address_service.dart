@@ -1,53 +1,36 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dapm/shared/models/address_model.dart';
+import 'package:flutter_dapm/shared/models/address_suggestion_model.dart';
 
 class AddressService {
   final Dio _dio = Dio();
-  // Sửa lại Base URL để bao gồm /api
-  final String _baseUrl = 'https://provinces.open-api.vn/api';
+  // Endpoint của Nominatim (dịch vụ Geocoding của OpenStreetMap)
+  final String _baseUrl = 'https://nominatim.openstreetmap.org';
 
-  Future<List<Province>> getProvinces() async {
+  Future<List<AddressSuggestion>> getAutocompleteSuggestions(String query) async {
+    if (query.trim().isEmpty) {
+      return [];
+    }
+
     try {
-      // Endpoint đúng là /p/
-      final response = await _dio.get('$_baseUrl/p/');
+      // Thêm "Việt Nam" vào query để ưu tiên kết quả
+      final fullQuery = '$query, Việt Nam';
+
+      final response = await _dio.get(
+        '$_baseUrl/search',
+        queryParameters: {
+          'q': fullQuery,
+          'format': 'json',
+          'addressdetails': '1', // Lấy thêm chi tiết địa chỉ
+          'limit': 5, // Giới hạn 5 kết quả
+        },
+      );
+
       final List<dynamic> data = response.data;
-      // API này trả về `code` và `name`
-      return data
-          .map((json) => Province(id: json['code'], name: json['name']))
-          .toList();
-    } catch (e) {
-      debugPrint("Error fetching provinces: $e");
-      return [];
-    }
-  }
+      return data.map((json) => AddressSuggestion.fromJson(json)).toList();
 
-  Future<List<District>> getDistricts(int provinceCode) async {
-    try {
-      // Endpoint đúng là /p/{provinceCode}?depth=2
-      final response = await _dio.get('$_baseUrl/p/$provinceCode?depth=2');
-      final List<dynamic> data = response.data['districts'];
-      // API này trả về `code` và `name`
-      return data
-          .map((json) => District(id: json['code'], name: json['name']))
-          .toList();
     } catch (e) {
-      debugPrint("Error fetching districts: $e");
-      return [];
-    }
-  }
-
-  Future<List<Ward>> getWards(int districtCode) async {
-    try {
-      // Endpoint đúng là /d/{districtCode}?depth=2
-      final response = await _dio.get('$_baseUrl/d/$districtCode?depth=2');
-      final List<dynamic> data = response.data['wards'];
-      // API này trả về `code` và `name`
-      return data
-          .map((json) => Ward(id: json['code'], name: json['name']))
-          .toList();
-    } catch (e) {
-      debugPrint("Error fetching wards: $e");
+      debugPrint("Lỗi khi lấy gợi ý địa chỉ từ Nominatim: $e");
       return [];
     }
   }

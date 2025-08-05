@@ -1,12 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dapm/shared/models/address_suggestion_model.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:flutter_dapm/features/dashboard/screen/dashboard_screen.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
-import 'package:flutter_dapm/shared/models/address_model.dart';
 import 'package:flutter_dapm/shared/services/address_service.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -17,11 +19,10 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // ------------------- 1. KHAI BÁO BIẾN ------------------- //
-
-  // Keys & Services
+  // --- 1. KHAI BÁO BIẾN --- //
   final _formKey = GlobalKey<FormState>();
   final AddressService _addressService = AddressService();
+  final _storage = const FlutterSecureStorage();
 
   // Controllers
   final _nameController = TextEditingController();
@@ -30,191 +31,122 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _streetController = TextEditingController();
+  final _addressController = TextEditingController();
 
   // Trạng thái Form
   String? _selectedGender;
   bool _isPasswordObscured = true;
   bool _isConfirmPasswordObscured = true;
 
-  // Trạng thái Địa chỉ
-  List<Province> _provinces = [];
-  List<District> _districts = [];
-  List<Ward> _wards = [];
-  Province? _selectedProvince;
-  District? _selectedDistrict;
-  Ward? _selectedWard;
-  bool _isLoadingProvinces = true;
-  bool _isLoadingDistricts = false;
-  bool _isLoadingWards = false;
+  List<AddressSuggestion> _placeSuggestions = [];
+  Timer? _debounce;
+  bool _isSearchingAddress = false;
 
   // ------------------- 2. VÒNG ĐỜI WIDGET ------------------- //
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProvinces();
-  }
-
   @override
   void dispose() {
+    _debounce?.cancel();
     _nameController.dispose();
     _dobController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
-    _streetController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
   // ------------------- 3. CÁC HÀM XỬ LÝ LOGIC ------------------- //
 
-  // --- Logic Địa chỉ ---
-  void _loadProvinces() async {
-    _provinces = await _addressService.getProvinces();
-    if (mounted) {
-      setState(() => _isLoadingProvinces = false);
-    }
-  }
-
-  void _onProvinceChanged(Province? province) async {
-    if (province == null || province == _selectedProvince) return;
-
-    // Hiển thị loading và reset các giá trị phụ thuộc
-    setState(() {
-      _selectedProvince = province;
-      _selectedDistrict = null;
-      _selectedWard = null;
-      _districts = [];
-      _wards = [];
-      _isLoadingDistricts = true; // Bật loading
-      _isLoadingWards = false; // Tắt loading (nếu có)
+  void _onAddressChanged(String input) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 700), () async {
+      if (input.isNotEmpty) {
+        if (mounted) setState(() => _isSearchingAddress = true);
+        // SỬA LẠI Ở ĐÂY
+        _placeSuggestions = await _addressService.getAutocompleteSuggestions(input);
+        if (mounted) setState(() => _isSearchingAddress = false);
+      } else {
+        if (mounted) setState(() => _placeSuggestions = []);
+      }
     });
-
-    // Lấy dữ liệu mới
-    final loadedDistricts = await _addressService.getDistricts(province.id);
-
-    // Cập nhật UI với dữ liệu mới
-    if (mounted) {
-      setState(() {
-        _districts = loadedDistricts;
-        _isLoadingDistricts = false; // Tắt loading
-      });
-    }
   }
 
-  void _onDistrictChanged(District? district) async {
-    if (district == null || district == _selectedDistrict) return;
-
-    // Hiển thị loading và reset giá trị phụ thuộc
-    setState(() {
-      _selectedDistrict = district;
-      _selectedWard = null;
-      _wards = [];
-      _isLoadingWards = true; // Bật loading
-    });
-
-    // Lấy dữ liệu mới
-    final loadedWards = await _addressService.getWards(district.id);
-
-    // Cập nhật UI với dữ liệu mới
-    if (mounted) {
-      setState(() {
-        _wards = loadedWards;
-        _isLoadingWards = false; // Tắt loading
-      });
-    }
-  }
-
-  // --- Logic Form ---
   Future<void> _handleSignup() async {
-    // 1. Validate form
     if (_formKey.currentState?.validate() != true) {
-      // THÊM VÀO ĐÂY: Hiển thị thông báo nếu form không hợp lệ
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng kiểm tra lại các thông tin đã nhập.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return; // Dừng lại
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng kiểm tra lại các thông tin.'), backgroundColor: Colors.orange));
+      return;
     }
-    final String fullAddress =
-        "${_streetController.text}, ${_selectedWard?.name}, ${_selectedDistrict?.name}, ${_selectedProvince?.name}";
+
+    // SỬA LẠI: Lấy địa chỉ trực tiếp từ _addressController
     final Map<String, dynamic> userData = {
       "name": _nameController.text,
       "email": _emailController.text,
       "password": _passwordController.text,
       "phone": _phoneController.text,
-      "address": fullAddress,
+      "address": _addressController.text,
       "dob": _dobController.text,
       "gender": _selectedGender,
     };
+
     try {
       final dio = Dio();
       const String apiUrl = '${ApiConfig.baseUrl}/auth/signup';
       final response = await dio.post(apiUrl, data: userData);
-
       if (response.statusCode == 201 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng ký tài khoản thành công! Vui lòng đăng nhập.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đăng ký thành công! Vui lòng đăng nhập.'), backgroundColor: Colors.green));
         Navigator.of(context).pop();
       }
     } on DioException catch (e) {
-      String errorMessage = "Đã có lỗi xảy ra. Vui lòng thử lại.";
-      if (e.response != null) {
-        errorMessage = e.response?.data['message'] ?? errorMessage;
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
-      }
+      _showErrorSnackBar(e);
     }
   }
 
   Future<void> _handleGoogleSignUp() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        debugPrint("Đăng ký Google đã bị hủy.");
-        return;
-      }
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      if (googleUser == null) return;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
-      if (idToken == null) {
-        debugPrint("Không lấy được ID Token từ Google.");
-        return;
-      }
+      if (idToken == null) return;
+
       final dio = Dio();
       const String apiUrl = '${ApiConfig.baseUrl}/auth/google';
       final response = await dio.post(apiUrl, data: {'idToken': idToken});
 
       if (response.statusCode == 200 && mounted) {
-        // TODO: Lưu token: response.data['token']
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
+        _loginSuccess(response.data['token']);
       }
     } catch (error) {
       debugPrint("Lỗi đăng ký Google: $error");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng ký bằng Google thất bại.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đăng ký bằng Google thất bại.'), backgroundColor: Colors.red));
       }
     }
   }
 
+  // Tách logic xử lý sau khi đăng nhập thành công
+  Future<void> _loginSuccess(String token) async {
+    await _storage.write(key: 'jwt_token', value: token);
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
+  }
+
+  // Tách logic hiển thị lỗi
+  void _showErrorSnackBar(DioException e) {
+    String errorMessage = "Đã có lỗi xảy ra. Vui lòng thử lại.";
+    if (e.response != null) {
+      errorMessage = e.response?.data['message'] ?? errorMessage;
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+      );
+    }
+  }
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -314,176 +246,34 @@ class _SignupScreenState extends State<SignupScreen> {
                   const SizedBox(height: 24),
 
                   // --- CÁC TRƯỜNG NHẬP LIỆU CƠ BẢN ---
-                  _buildTextFormField(
-                    controller: _nameController,
-                    labelText: 'Họ và tên',
-                    icon: Icons.person_outline,
-                    validator:
-                        (v) => v!.isEmpty ? 'Vui lòng nhập họ tên' : null,
-                  ),
+                  // --- CÁC TRƯỜNG NHẬP LIỆU CƠ BẢN ---
+                  _buildTextFormField(controller: _nameController, labelText: 'Họ và tên', icon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'Vui lòng nhập họ tên' : null),
+                  const SizedBox(height: 16),
+                  TextFormField(controller: _dobController, readOnly: true, decoration: _inputDecoration('Ngày tháng năm sinh', Icons.calendar_today_outlined), onTap: () => _selectDate(context), validator: (v) => v!.isEmpty ? 'Vui lòng chọn ngày sinh' : null),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>( value: _selectedGender, decoration: _inputDecoration('Giới tính', Icons.wc_outlined), items: ['Nam', 'Nữ', 'Khác'].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(), onChanged: (v) => setState(() => _selectedGender = v), validator: (v) => v == null ? 'Vui lòng chọn giới tính' : null),
                   const SizedBox(height: 16),
 
-                  TextFormField(
-                    controller: _dobController,
-                    readOnly: true,
-                    decoration: _inputDecoration(
-                      'Ngày tháng năm sinh',
-                      Icons.calendar_today_outlined,
-                    ),
-                    onTap: () => _selectDate(context),
-                    validator:
-                        (v) => v!.isEmpty ? 'Vui lòng chọn ngày sinh' : null,
-                  ),
+                  _buildTextFormField(controller: _addressController, labelText: 'Nhập địa chỉ', icon: Icons.location_on_outlined, onChanged: _onAddressChanged, validator: (v) => v!.isEmpty ? 'Vui lòng nhập địa chỉ' : null),
+
+                  // SỬA LẠI PHẦN HIỂN THỊ GỢI Ý
+                  if (_isSearchingAddress)
+                    const Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Center(child: CircularProgressIndicator()))
+                  else if (_placeSuggestions.isNotEmpty)
+                    _buildSuggestionsList(), // <-- Sửa tên hàm
+
                   const SizedBox(height: 16),
-
-                  DropdownButtonFormField<String>(
-                    value: _selectedGender,
-                    decoration: _inputDecoration(
-                      'Giới tính',
-                      Icons.wc_outlined,
-                    ),
-                    items:
-                        ['Nam', 'Nữ', 'Khác']
-                            .map(
-                              (g) => DropdownMenuItem(value: g, child: Text(g)),
-                            )
-                            .toList(),
-                    onChanged: (v) => setState(() => _selectedGender = v),
-                    validator:
-                        (v) => v == null ? 'Vui lòng chọn giới tính' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- PHẦN ĐỊA CHỈ ---
-                  _buildProvinceDropdown(),
-                  const SizedBox(height: 16),
-
-                  if (_selectedProvince != null) ...[
-                    _buildDistrictDropdown(),
-                    const SizedBox(height: 16),
-                  ],
-
-                  if (_selectedDistrict != null) ...[
-                    _buildWardDropdown(),
-                    const SizedBox(height: 16),
-                  ],
-
-                  if (_selectedWard != null) ...[
-                    _buildTextFormField(
-                      controller: _streetController,
-                      labelText: 'Số nhà, tên đường',
-                      icon: Icons.home_work_outlined,
-                      validator:
-                          (v) =>
-                              v!.isEmpty
-                                  ? 'Vui lòng nhập chi tiết địa chỉ'
-                                  : null,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
 
                   // --- CÁC TRƯỜNG CÒN LẠI ---
-                  _buildTextFormField(
-                    controller: _emailController,
-                    labelText: 'Email',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'[a-zA-Z0-9@._-]'),
-                      ),
-                    ],
-                    validator: (v) {
-                      if (v!.isEmpty) return 'Vui lòng nhập email';
-                      if (!RegExp(r'\S+@\S+\.\S+').hasMatch(v))
-                        return 'Email không hợp lệ';
-                      return null;
-                    },
-                  ),
+                  // ... (Email, Phone, Password, Confirm Password)
+                  _buildTextFormField(controller: _emailController, labelText: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress, inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9@._-]'))], validator: (v) { if (v!.isEmpty) return 'Vui lòng nhập email'; if (!RegExp(r'\S+@\S+\.\S+').hasMatch(v)) return 'Email không hợp lệ'; return null; }),
                   const SizedBox(height: 16),
-
-                  _buildTextFormField(
-                    controller: _phoneController,
-                    labelText: 'Số điện thoại',
-                    icon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (v) {
-                      if (v!.isEmpty) return 'Vui lòng nhập số điện thoại';
-                      if (v.length < 10) return 'Số điện thoại không hợp lệ';
-                      return null;
-                    },
-                  ),
+                  _buildTextFormField(controller: _phoneController, labelText: 'Số điện thoại', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, inputFormatters: [FilteringTextInputFormatter.digitsOnly], validator: (v) { if (v!.isEmpty) return 'Vui lòng nhập số điện thoại'; if (v.length < 10) return 'Số điện thoại không hợp lệ'; return null; }),
                   const SizedBox(height: 16),
-
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _isPasswordObscured,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.deny(
-                        RegExp(r'[\u0300-\u036f]'),
-                      ),
-                    ],
-                    decoration: _inputDecoration(
-                      'Mật khẩu',
-                      Icons.lock_outline,
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordObscured
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed:
-                            () => setState(
-                              () => _isPasswordObscured = !_isPasswordObscured,
-                            ),
-                      ),
-                    ),
-                    validator: (v) {
-                      if (v!.isEmpty) return 'Vui lòng nhập mật khẩu';
-                      if (v.length < 6)
-                        return 'Mật khẩu phải có ít nhất 6 ký tự';
-                      return null;
-                    },
-                  ),
+                  TextFormField(controller: _passwordController, obscureText: _isPasswordObscured, inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[\u0300-\u036f]'))], decoration: _inputDecoration('Mật khẩu', Icons.lock_outline).copyWith(suffixIcon: IconButton(icon: Icon(_isPasswordObscured ? Icons.visibility_off : Icons.visibility), onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured))), validator: (v) { if (v!.isEmpty) return 'Vui lòng nhập mật khẩu'; if (v.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự'; return null; }),
                   const SizedBox(height: 16),
-
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: _isConfirmPasswordObscured,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.deny(
-                        RegExp(r'[\u0300-\u036f]'),
-                      ),
-                    ],
-                    decoration: _inputDecoration(
-                      'Nhập lại mật khẩu',
-                      Icons.lock_outline,
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isConfirmPasswordObscured
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed:
-                            () => setState(
-                              () =>
-                                  _isConfirmPasswordObscured =
-                                      !_isConfirmPasswordObscured,
-                            ),
-                      ),
-                    ),
-                    validator: (v) {
-                      if (v!.isEmpty) return 'Vui lòng nhập lại mật khẩu';
-                      if (v != _passwordController.text)
-                        return 'Mật khẩu không khớp';
-                      return null;
-                    },
-                  ),
+                  TextFormField(controller: _confirmPasswordController, obscureText: _isConfirmPasswordObscured, inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[\u0300-\u036f]'))], decoration: _inputDecoration('Nhập lại mật khẩu', Icons.lock_outline).copyWith(suffixIcon: IconButton(icon: Icon(_isConfirmPasswordObscured ? Icons.visibility_off : Icons.visibility), onPressed: () => setState(() => _isConfirmPasswordObscured = !_isConfirmPasswordObscured))), validator: (v) { if (v!.isEmpty) return 'Vui lòng nhập lại mật khẩu'; if (v != _passwordController.text) return 'Mật khẩu không khớp'; return null; }),
                   const SizedBox(height: 32),
-
                   // --- NÚT ĐĂNG KÝ VÀ LINK ĐĂNG NHẬP ---
                   ElevatedButton(
                     onPressed: _handleSignup,
@@ -531,97 +321,35 @@ class _SignupScreenState extends State<SignupScreen> {
 
   // ------------------- 5. CÁC HÀM HELPER CHO UI ------------------- //
 
-  Widget _buildProvinceDropdown() {
-    return _isLoadingProvinces
-        ? _buildLoadingIndicator(Icons.location_city)
-        : DropdownButtonFormField<Province>(
-          value: _selectedProvince,
-          hint: const Text('Chọn Tỉnh/Thành phố'),
-          isExpanded: true,
-          decoration: _inputDecoration('Tỉnh/Thành phố', Icons.location_city),
-          items:
-              _provinces
-                  .map(
-                    (province) => DropdownMenuItem(
-                      value: province,
-                      child: Text(province.name),
-                    ),
-                  )
-                  .toList(),
-          onChanged: _onProvinceChanged,
-          validator:
-              (value) => value == null ? 'Vui lòng chọn Tỉnh/Thành phố' : null,
-        );
-  }
 
-  Widget _buildDistrictDropdown() {
-    return _isLoadingDistricts
-        ? _buildLoadingIndicator(Icons.map_outlined)
-        : DropdownButtonFormField<District>(
-          key: ValueKey(_selectedProvince),
-          value: _selectedDistrict,
-          hint: const Text('Chọn Quận/Huyện'),
-          isExpanded: true,
-          decoration: _inputDecoration('Quận/Huyện', Icons.map_outlined),
-          items:
-              _districts
-                  .map(
-                    (district) => DropdownMenuItem(
-                      value: district,
-                      child: Text(district.name),
-                    ),
-                  )
-                  .toList(),
-          onChanged: _onDistrictChanged,
-          validator:
-              (value) => value == null ? 'Vui lòng chọn Quận/Huyện' : null,
-        );
-  }
-
-  Widget _buildWardDropdown() {
-    return _isLoadingWards
-        ? _buildLoadingIndicator(Icons.location_on_outlined)
-        : DropdownButtonFormField<Ward>(
-          key: ValueKey(_selectedDistrict),
-          value: _selectedWard,
-          hint: const Text('Chọn Phường/Xã'),
-          isExpanded: true,
-          decoration: _inputDecoration('Phường/Xã', Icons.location_on_outlined),
-          items:
-              _wards
-                  .map(
-                    (ward) =>
-                        DropdownMenuItem(value: ward, child: Text(ward.name)),
-                  )
-                  .toList(),
-          onChanged: (ward) => setState(() => _selectedWard = ward),
-          validator:
-              (value) => value == null ? 'Vui lòng chọn Phường/Xã' : null,
-        );
-  }
-
-  Widget _buildLoadingIndicator(IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey),
-          const SizedBox(width: 12),
-          const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              color: Colors.deepOrange,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text('Đang tải...', style: TextStyle(color: Colors.grey.shade600)),
-        ],
+  Widget _buildSuggestionsList() {
+    return Container(
+      height: 200,
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 4)],
+      ),
+      child: ListView.builder(
+        itemCount: _placeSuggestions.length,
+        itemBuilder: (context, index) {
+          final suggestion = _placeSuggestions[index];
+          return ListTile(
+            leading: const Icon(Icons.location_pin, color: Colors.grey),
+            title: Text(suggestion.displayName), // <-- Sửa ở đây
+            onTap: () {
+              setState(() {
+                _addressController.text = suggestion.displayName; // <-- Sửa ở đây
+                _placeSuggestions = [];
+              });
+              FocusScope.of(context).unfocus();
+            },
+          );
+        },
       ),
     );
   }
-
   Widget _buildTextFormField({
     required TextEditingController controller,
     required String labelText,
@@ -629,6 +357,7 @@ class _SignupScreenState extends State<SignupScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     List<TextInputFormatter>? inputFormatters,
+    void Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
@@ -636,9 +365,9 @@ class _SignupScreenState extends State<SignupScreen> {
       decoration: _inputDecoration(labelText, icon),
       validator: validator,
       inputFormatters: inputFormatters,
+      onChanged: onChanged,
     );
   }
-
   InputDecoration _inputDecoration(String labelText, IconData icon) {
     return InputDecoration(
       labelText: labelText,

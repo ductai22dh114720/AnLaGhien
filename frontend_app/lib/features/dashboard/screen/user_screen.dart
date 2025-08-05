@@ -1,42 +1,59 @@
+// File: lib/features/dashboard/screens/user_screen.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'package:flutter_dapm/shared/models/user_model.dart';
+import 'package:flutter_dapm/shared/services/user_service.dart';
 
 class UserScreen extends StatefulWidget {
-  // Thay vì một Map, chúng ta định nghĩa rõ các tham số cần thiết
-  // Điều này an toàn và dễ đọc hơn
-  final String userName;
-  final String userEmail;
-  final String avatarUrl;
-  // Bạn có thể thêm các trường khác như phone, address nếu ProfileScreen có
-
-  const UserScreen({
-    super.key,
-    required this.userName,
-    required this.userEmail,
-    required this.avatarUrl,
-  });
+  final UserModel user;
+  const UserScreen({super.key, required this.user});
 
   @override
   State<UserScreen> createState() => _UserScreenState();
 }
 
 class _UserScreenState extends State<UserScreen> {
-  // Controllers để quản lý dữ liệu trên các TextField
+  final _formKey = GlobalKey<FormState>();
+  final _userService = UserService();
+
+  // Controllers cho các TextField
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
 
-  bool _isEditing = false; // Trạng thái bật/tắt chỉnh sửa
+  // Trạng thái UI
+  bool _isEditing = false;
+  bool _isLoading = false;
+
+  // Trạng thái bản đồ
+  final MapController _mapController = MapController();
+  final LatLng _initialPosition = const LatLng(10.7769, 106.7009); // Mặc định ở TPHCM
+  List<Marker> _markers = [];
 
   @override
   void initState() {
     super.initState();
-    // Khởi tạo các controller với dữ liệu được truyền vào từ widget
-    _nameController = TextEditingController(text: widget.userName);
-    _emailController = TextEditingController(text: widget.userEmail);
-    // Giả sử phone và address chưa có, bạn có thể để trống hoặc truyền vào
-    _phoneController = TextEditingController(text: "0987654321"); // Dữ liệu mẫu
-    _addressController = TextEditingController(text: "123 Đường ABC, Phường X, Quận Y, TP. Z"); // Dữ liệu mẫu
+    // Khởi tạo controller với dữ liệu ban đầu
+    _nameController = TextEditingController(text: widget.user.name);
+    _emailController = TextEditingController(text: widget.user.email);
+    _phoneController = TextEditingController(text: widget.user.phone);
+    _addressController = TextEditingController(text: widget.user.address);
+
+    // TODO: Sau này, chuyển đổi widget.user.address thành tọa độ và gán vào _initialPosition
+
+    // Thêm marker ban đầu
+    _markers.add(
+      Marker(
+        point: _initialPosition,
+        width: 80.0,
+        height: 80.0,
+        child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+      ),
+    );
   }
 
   @override
@@ -46,6 +63,49 @@ class _UserScreenState extends State<UserScreen> {
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleUpdateProfile() async {
+    if (_formKey.currentState?.validate() != true) return;
+
+    setState(() => _isLoading = true);
+
+    final updatedData = {
+      'name': _nameController.text,
+      'phone': _phoneController.text,
+      'address': _addressController.text,
+    };
+
+    final success = await _userService.updateUserProfile(updatedData);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cập nhật thông tin thành công!'), backgroundColor: Colors.green),
+        );
+        setState(() => _isEditing = false);
+        Navigator.of(context).pop(true); // Trả về true để màn hình trước biết cần tải lại
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cập nhật thất bại. Vui lòng thử lại.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _goToPosition(LatLng position) {
+    _mapController.move(position, 16.0);
+    setState(() {
+      _markers = [
+        Marker(
+          point: position,
+          width: 80.0,
+          height: 80.0,
+          child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+        ),
+      ];
+    });
   }
 
   @override
@@ -59,88 +119,96 @@ class _UserScreenState extends State<UserScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          // Nút Chỉnh sửa / Lưu
-          IconButton(
-            icon: Icon(_isEditing ? Icons.save_outlined : Icons.edit_outlined),
-            onPressed: () {
-              setState(() {
+          if (!_isLoading)
+            IconButton(
+              icon: Icon(_isEditing ? Icons.save_outlined : Icons.edit_outlined),
+              onPressed: () {
                 if (_isEditing) {
-                  // TODO: Gọi API để lưu thông tin mới
-                  debugPrint("Lưu thông tin: ${_nameController.text}");
+                  _handleUpdateProfile();
+                } else {
+                  setState(() => _isEditing = true);
                 }
-                _isEditing = !_isEditing;
-              });
-            },
-          )
+              },
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
+            ),
         ],
       ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              // Avatar
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: NetworkImage(widget.avatarUrl), // Sử dụng avatarUrl từ widget
-                  ),
-                  if (_isEditing)
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          // TODO: Mở thư viện ảnh để chọn ảnh mới
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.deepOrange,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(6.0),
-                            child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                // --- AVATAR ---
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundImage: NetworkImage(widget.user.avatarUrl ?? "https://i.pravatar.cc/150?img=12"),
+                    ),
+                    if (_isEditing)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () {
+                            // TODO: Mở thư viện ảnh để chọn ảnh mới
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.deepOrange,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6.0),
+                              child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 40),
+                  ],
+                ),
+                const SizedBox(height: 40),
 
-              // Form thông tin
-              _buildUserInfoField(
-                label: "Họ và tên",
-                icon: Icons.person,
-                controller: _nameController,
-                isEditing: _isEditing,
-              ),
-              const SizedBox(height: 20),
-              _buildUserInfoField(
-                label: "Email",
-                icon: Icons.email,
-                controller: _emailController,
-                isEditing: false, // Email thường không được phép chỉnh sửa
-              ),
-              const SizedBox(height: 20),
-              _buildUserInfoField(
-                label: "Số điện thoại",
-                icon: Icons.phone,
-                controller: _phoneController,
-                isEditing: _isEditing,
-              ),
-              const SizedBox(height: 20),
-              _buildUserInfoField(
-                label: "Địa chỉ",
-                icon: Icons.location_on,
-                controller: _addressController,
-                isEditing: _isEditing,
-                maxLines: 3,
-              ),
-            ],
+                // --- FORM THÔNG TIN ---
+                _buildUserInfoField(label: "Họ và tên", icon: Icons.person, controller: _nameController, isEditing: _isEditing),
+                const SizedBox(height: 20),
+                _buildUserInfoField(label: "Email", icon: Icons.email, controller: _emailController, isEditing: false),
+                const SizedBox(height: 20),
+                _buildUserInfoField(label: "Số điện thoại", icon: Icons.phone, controller: _phoneController, isEditing: _isEditing),
+                const SizedBox(height: 20),
+                _buildUserInfoField(label: "Địa chỉ", icon: Icons.location_on, controller: _addressController, isEditing: _isEditing, maxLines: 3),
+
+                // --- WIDGET BẢN ĐỒ ---
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 250,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _initialPosition,
+                        initialZoom: 14.0,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.flutter_dapm',
+                        ),
+                        MarkerLayer(markers: _markers),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +16,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
+  final _storage = const FlutterSecureStorage();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -61,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final jwtToken = response.data['token'];
+        await _storage.write(key: 'jwt_token', value: jwtToken);
         debugPrint("Đăng nhập backend thành công. JWT Token: $jwtToken");
 
         // TODO: Lưu jwtToken vào flutter_secure_storage
@@ -78,20 +80,28 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _handleLogin() {
-    if (_formKey.currentState?.validate() == true) {
-      // Logic đăng nhập thành công
-      debugPrint("Email: ${_emailController.text}");
-      debugPrint("Password: ${_passwordController.text}");
-      // Sau khi đăng nhập thành công, chuyển đến màn hình chính
-      Navigator.of(context).pushReplacement(
-        // THAY THẾ Ở ĐÂY
-        CustomPageRoute(
-          child: const DashboardScreen(),
-          type: PageTransitionType.scale,
-        ),
-      );
-    }
+  Future<void> _handleLogin() async { // Đổi thành async
+    if (_formKey.currentState?.validate() != true) return;
+    try {
+      final dio = Dio();
+      const apiUrl = '${ApiConfig.baseUrl}/auth/login';
+      final response = await dio.post(apiUrl, data: {
+        'email': _emailController.text,
+        'password': _passwordController.text,
+      });
+
+      if (response.statusCode == 200) {
+        final token = response.data['token'];
+        // LƯU TOKEN
+        await _storage.write(key: 'jwt_token', value: token);
+
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            CustomPageRoute(child: const DashboardScreen(), type: PageTransitionType.scale),
+          );
+        }
+      }
+    } on DioException catch (e) { /* ... xử lý lỗi ... */ }
   }
 
   void _navigateToSignup() {

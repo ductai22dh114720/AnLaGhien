@@ -9,4 +9,5 @@ class ApiConfig {
 
   // URL cơ sở, các file khác sẽ dùng cái này
   static const String baseUrl = 'https://anlaghien-be.onrender.com/api';
+  static const String googleApiKey = "AIzaSyDoFrAvPlf5ol0Pune_HNZCgCtNdm-HS9g";
 }

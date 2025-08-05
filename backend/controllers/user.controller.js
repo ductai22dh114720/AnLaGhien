@@ -24,7 +24,10 @@ exports.getUserProfile = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
     try {
         const userId = req.userData.userId;
-        const updates = req.body; // { name: "New Name", phone: "123" }
+
+        // Chỉ cho phép cập nhật các trường an toàn
+        const { name, phone, address } = req.body;
+        const updates = { name, phone, address };
 
         // Tìm và cập nhật user
         // { new: true } để trả về document đã được cập nhật
@@ -34,8 +37,8 @@ exports.updateUserProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        res.status(200).json({ message: 'Profile updated successfully!', user: updatedUser });
+        res.status(200).json({ message: 'Cập nhật thông tin thành công!', user: updatedUser });
     } catch (error) {
-        res.status(500).json({ message: 'Updating user failed.', error: error.message });
+        res.status(500).json({ message: 'Cập nhật thông tin thất bại.', error: error.message });
     }
 };

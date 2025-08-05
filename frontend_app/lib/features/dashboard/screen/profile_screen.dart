@@ -3,6 +3,9 @@ import 'package:flutter_dapm/features/authentication/screen/login_screen.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dapm/features/dashboard/screen/user_screen.dart';
+import 'package:flutter_dapm/shared/models/user_model.dart';
+import 'package:flutter_dapm/shared/services/user_service.dart';
+import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -11,68 +14,58 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Dữ liệu người dùng mẫu - sau này bạn sẽ lấy từ API hoặc SharedPreferences
-  final String userName = "Nguyễn Thái Thành Đạt";
-  final String userEmail = "dat.nguyen@email.com";
-  final String avatarUrl = "https://i.pravatar.cc/150?img=12";
+  // --- BIẾN TRẠNG THÁI ---
+  late Future<UserModel?> _userFuture;
 
-  // --- HÀM MỚI ĐỂ XỬ LÝ LOGIC ĐĂNG XUẤT ---
+  // --- VÒNG ĐỜI WIDGET ---
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  void _loadUserProfile() {
+    setState(() {
+      _userFuture = UserService().getUserProfile();
+    });
+  }
+
+  // --- HÀM LOGIC ---
   Future<void> _performLogout() async {
-    // 1. Xóa token đã lưu
     final box = GetStorage();
-    // Giả sử bạn lưu token với key là 'jwt_token' sau khi đăng nhập thành công
     await box.remove('jwt_token');
-
-    // 2. Đăng xuất khỏi tài khoản Google (nếu cần)
-    // Dòng này đảm bảo lần sau khi nhấn "Đăng nhập với Google", cửa sổ chọn tài khoản sẽ hiện lại.
     await GoogleSignIn().signOut();
-
-    // 3. Điều hướng về trang Login và xóa hết các màn hình cũ
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        // Dùng MaterialPageRoute hoặc CustomPageRoute tùy bạn
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false, // Xóa tất cả các route trước đó
+            (Route<dynamic> route) => false,
       );
     }
   }
 
-  // --- HÀM MỚI ĐỂ HIỂN THỊ DIALOG XÁC NHẬN ---
   void _showLogoutConfirmationDialog() {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
           title: const Text('Xác nhận Đăng xuất'),
-          content: const Text(
-            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này?',
-          ),
+          content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này?'),
           actions: <Widget>[
             TextButton(
               child: Text('Hủy', style: TextStyle(color: Colors.grey[700])),
-              onPressed: () {
-                Navigator.of(dialogContext).pop(); // Đóng dialog
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    Colors.red, // Dùng màu đỏ cho hành động nguy hiểm
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
               onPressed: () {
-                Navigator.of(dialogContext).pop(); // Đóng dialog trước
-                _performLogout(); // Sau đó thực hiện đăng xuất
+                Navigator.of(dialogContext).pop();
+                _performLogout();
               },
-              child: const Text(
-                'Đăng xuất',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text('Đăng xuất', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -80,112 +73,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // --- PHẦN BUILD UI ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          "TÀI KHOẢN CỦA TÔI",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text("TÀI KHOẢN CỦA TÔI", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildProfileHeader(),
-              const SizedBox(height: 30),
-              _buildSettingsGroup(
-                title: "Tài khoản",
+      body: FutureBuilder<UserModel?>(
+        future: _userFuture,
+        builder: (context, snapshot) {
+          // Trường hợp đang tải
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          // Trường hợp có lỗi hoặc không có dữ liệu
+          if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildProfileOption(
-                    icon: Icons.person_outline,
-                    title: "Thông tin cá nhân",
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          // SỬA LẠI LỜI GỌI NÀY
-                          builder: (context) => UserScreen(
-                            userName: userName,   // <-- Truyền tên
-                            userEmail: userEmail, // <-- Truyền email
-                            avatarUrl: avatarUrl, // <-- Truyền URL avatar
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildProfileOption(
-                    icon: Icons.location_on_outlined,
-                    title: "Địa chỉ của tôi",
-                    onTap: () {},
-                  ),
-                  _buildProfileOption(
-                    icon: Icons.receipt_long_outlined,
-                    title: "Lịch sử đơn hàng",
-                    onTap: () {},
-                  ),
+                  const Text('Không thể tải dữ liệu người dùng.'),
+                  const SizedBox(height: 10),
+                  ElevatedButton(onPressed: _loadUserProfile, child: const Text('Thử lại'))
                 ],
               ),
-              const SizedBox(height: 20),
-              _buildSettingsGroup(
-                title: "Hỗ trợ & Cài đặt",
-                children: [
-                  _buildProfileOption(
-                    icon: Icons.notifications_none_outlined,
-                    title: "Thông báo",
-                    onTap: () {},
-                  ),
-                  _buildProfileOption(
-                    icon: Icons.help_outline,
-                    title: "Trung tâm hỗ trợ",
-                    onTap: () {},
-                  ),
-                  _buildProfileOption(
-                    icon: Icons.info_outline,
-                    title: "Về chúng tôi",
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildLogoutButton(),
-            ],
-          ),
-        ),
+            );
+          }
+
+          // Trường hợp có dữ liệu thành công
+          final user = snapshot.data!;
+          return _buildProfileView(user);
+        },
       ),
     );
   }
 
+  // --- WIDGETS HELPER ---
+
+  // Widget chính để xây dựng nội dung trang profile
+  Widget _buildProfileView(UserModel user) {
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            _buildProfileHeader(user),
+            const SizedBox(height: 30),
+            _buildSettingsGroup(
+              title: "Tài khoản",
+              children: [
+                _buildProfileOption(
+                  icon: Icons.person_outline,
+                  title: "Thông tin cá nhân",
+                  onTap: () {
+                    Navigator.of(context).push(
+                      CustomPageRoute(
+                        child: UserScreen(user: user),
+                        type: PageTransitionType.slide, // <-- Hiệu ứng trượt
+                      ),
+                    ).then((result) {
+                      // Nếu trang UserScreen trả về true (có nghĩa là đã cập nhật), thì tải lại profile
+                      if (result == true) {
+                        _loadUserProfile();
+                      }
+                    });
+                  },
+                ),
+                _buildProfileOption(icon: Icons.location_on_outlined, title: "Địa chỉ của tôi", onTap: () {}),
+                _buildProfileOption(icon: Icons.receipt_long_outlined, title: "Lịch sử đơn hàng", onTap: () {}),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildSettingsGroup(
+              title: "Hỗ trợ & Cài đặt",
+              children: [
+                _buildProfileOption(icon: Icons.notifications_none_outlined, title: "Thông báo", onTap: () {}),
+                _buildProfileOption(icon: Icons.help_outline, title: "Trung tâm hỗ trợ", onTap: () {}),
+                _buildProfileOption(icon: Icons.info_outline, title: "Về chúng tôi", onTap: () {}),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildLogoutButton(),
+          ],
+        ),
+      ),
+    );
+  }
   // --- CÁC WIDGET HELPER ---
 
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(UserModel user) {
     return Column(
       children: [
         CircleAvatar(
           radius: 50,
-          backgroundColor: Colors.deepOrange.withOpacity(0.1),
-          backgroundImage: NetworkImage(avatarUrl),
+          backgroundColor: Colors.deepOrange.withAlpha(25), // Sửa lỗi deprecated
+          backgroundImage: NetworkImage(user.avatarUrl ?? "https://i.pravatar.cc/150?img=12"),
         ),
         const SizedBox(height: 12),
-        Text(
-          userName,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
+        Text(user.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black)),
         const SizedBox(height: 4),
-        Text(
-          userEmail,
-          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-        ),
+        Text(user.email, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
       ],
     );
   }
