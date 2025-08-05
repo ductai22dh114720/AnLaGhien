@@ -1,5 +1,6 @@
 // controllers/auth.controller.js
 const User = require('../models/user.model');
+const Wallet = require('../models/wallet.model');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
@@ -42,15 +43,21 @@ exports.signup = async (req, res) => {
       gender,
     });
 
-    // 4. Lưu user vào DB
-    await newUser.save();
+    // SỬA LẠI Ở ĐÂY
+       // 4. Lưu user vào DB và lấy kết quả trả về
+       const savedUser = await newUser.save();
 
-    res.status(201).json({ message: 'Đăng ký thành công!' });
+       // --- THÊM LOGIC TẠO VÍ ---
+       const newWallet = new Wallet({ user: savedUser._id });
+       await newWallet.save();
+       // --- KẾT THÚC SỬA ĐỔI ---
 
-  } catch (error) {
-    console.error("Lỗi khi đăng ký:", error); 
-    res.status(500).json({ message: 'Đã có lỗi xảy ra.', error: error.message });
-  }
+       res.status(201).json({ message: 'Đăng ký thành công!' });
+
+     } catch (error) {
+       console.error("Lỗi khi đăng ký:", error);
+       res.status(500).json({ message: 'Đã có lỗi xảy ra.', error: error.message });
+     }
 };
 
 exports.login = async (req, res) => {
@@ -69,6 +76,16 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng.' });
     }
 
+    // SỬA LẠI Ở ĐÂY
+          const savedUser = await user.save(); // Lưu user mới và lấy kết quả
+
+          // --- THÊM LOGIC TẠO VÍ ---
+          const newWallet = new Wallet({ user: savedUser._id });
+          await newWallet.save();
+          // --- KẾT THÚC THÊM ---
+
+          user = savedUser; // Gán lại user với thông tin đã lưu (bao gồm _id)
+        }
     // 3. Tạo JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },

@@ -1,7 +1,7 @@
 const moment = require('moment');
 const querystring = require('qs');
 const crypto = require("crypto");
-// Import các model cần thiết
+
 const Wallet = require('../models/wallet.model');
 const Transaction = require('../models/transaction.model');
 const User = require('../models/user.model');
