@@ -20,7 +20,8 @@ dependencies:
 #  google_maps_flutter: ^2.6.1 # Gói để hiển thị bản đồ
 #  google_maps_apis: ^3.0.1
   flutter_map: ^6.1.0 # Để hiển thị bản đồ OSM
-  latlong2: ^0.9.0    # Cung cấp đối tượng LatLng cho flutter_map
+  latlong2: ^0.9.0
+  webview_flutter: ^4.7.0 # Hoặc phiên bản mới nhất# Cung cấp đối tượng LatLng cho flutter_map
 
 dev_dependencies:
   flutter_test:
