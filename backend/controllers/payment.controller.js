@@ -19,6 +19,7 @@ exports.createVnpayPayment = async (req, res) => {
         const orderId = moment(date).format('HHmmss');
         const amount = req.body.amount;
 
+        // Tạo giao dịch trong DB
         const userId = req.userData.userId;
         const wallet = await Wallet.findOne({ user: userId });
         if (!wallet) {
@@ -44,16 +45,30 @@ exports.createVnpayPayment = async (req, res) => {
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_TxnRef'] = newTransaction._id.toString();
 
-        const sortedParams = sortObject(vnp_Params);
-        const signData = querystring.stringify(sortedParams, { encode: false });
+        // --- BẮT ĐẦU LOGIC TẠO CHỮ KÝ MỚI, ĐÚNG CHUẨN ---
 
+        // 1. Sắp xếp các key
+        const sortedKeys = Object.keys(vnp_Params).sort();
+
+        // 2. Tạo chuỗi signData thủ công
+        let signData = "";
+        for (const key of sortedKeys) {
+            if (vnp_Params[key] !== '' && vnp_Params[key] !== undefined && vnp_Params[key] !== null) {
+                // Nối key=value&
+                signData += (signData.length === 0 ? '' : '&') + key + '=' + vnp_Params[key];
+            }
+        }
+
+        // 3. Tạo chữ ký
         const hmac = crypto.createHmac("sha512", secretKey);
-        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
+        const vnp_SecureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-        sortedParams['vnp_SecureHash'] = signed;
-        vnpUrl += '?' + querystring.stringify(sortedParams, { encode: true });
+        // 4. Thêm chữ ký vào cuối chuỗi query string
+        const queryString = querystring.stringify(vnp_Params, { encode: true });
+        const finalUrl = vnpUrl + '?' + queryString + '&vnp_SecureHash=' + vnp_SecureHash;
+        // --- KẾT THÚC LOGIC MỚI ---
 
-        res.status(200).json({ paymentUrl: vnpUrl });
+        res.status(200).json({ paymentUrl: finalUrl });
 
     } catch (error) {
         console.error("Lỗi khi tạo thanh toán VNPay:", error);
@@ -72,9 +87,18 @@ exports.handleVnpayReturn = async (req, res) => {
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        const sortedParams = sortObject(vnp_Params);
+        // Sắp xếp lại
+        const sortedKeys = Object.keys(vnp_Params).sort();
+
+        // Tạo lại signData để kiểm tra
+        let signData = "";
+        for (const key of sortedKeys) {
+            if (vnp_Params[key] !== '' && vnp_Params[key] !== undefined && vnp_Params[key] !== null) {
+                signData += (signData.length === 0 ? '' : '&') + key + '=' + vnp_Params[key];
+            }
+        }
+
         const secretKey = process.env.VNPAY_HASH_SECRET;
-        const signData = querystring.stringify(sortedParams, { encode: false });
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
@@ -88,7 +112,7 @@ exports.handleVnpayReturn = async (req, res) => {
                 transaction.transactionCode = vnp_Params['vnp_TransactionNo'];
                 await transaction.save();
                 await Wallet.findByIdAndUpdate(transaction.wallet, { $inc: { balance: transaction.amount } });
-                return res.send("<h1>Thanh toán thành công!</h1><p>Giao dịch của bạn đã được xử lý. Bạn có thể đóng cửa sổ này.</p>");
+                return res.send("<h1>Thanh toán thành công!</h1><p>Bạn có thể đóng cửa sổ này.</p>");
             } else {
                 transaction.status = 'failed';
                 await transaction.save();
@@ -102,15 +126,3 @@ exports.handleVnpayReturn = async (req, res) => {
         return res.status(500).send("<h1>Đã có lỗi xảy ra</h1>");
     }
 };
-
-// HÀM HELPER ĐÃ ĐƯỢC SỬA LỖI
-function sortObject(obj) {
-    const sorted = {};
-    // Lấy tất cả các key của object và sort chúng
-    const keys = Object.keys(obj).sort();
-    // Duyệt qua các key đã được sort
-    for (const key of keys) {
-        sorted[key] = obj[key];
-    }
-    return sorted;
-}
