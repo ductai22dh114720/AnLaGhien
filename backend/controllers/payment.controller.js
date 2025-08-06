@@ -154,7 +154,7 @@
 //};
 //
 //
- HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
+// HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
 function sortObject(obj) {
 	let sorted = {};
 	let str = [];
