@@ -65,7 +65,7 @@ exports.createVnpayPayment = async (req, res) => {
 };
 
 
-/ --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ HOÀN THIỆN) ---
+// --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ HOÀN THIỆN) ---
 exports.handleVnpayReturn = async (req, res) => {
     try {
         let vnp_Params = req.query;
