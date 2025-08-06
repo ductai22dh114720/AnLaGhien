@@ -19,7 +19,6 @@ exports.createVnpayPayment = async (req, res) => {
 
         const orderId = moment(date).format('HHmmss');
         const amount = req.body.amount;
-        const orderInfo = 'Nap tien vao vi GD ' + orderId;
 
         // Tạo giao dịch trong DB
         const userId = req.userData.userId;
@@ -42,16 +41,17 @@ exports.createVnpayPayment = async (req, res) => {
         vnp_Params['vnp_CurrCode'] = 'VND';
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_Locale'] = 'vn';
-        vnp_Params['vnp_OrderInfo'] = orderInfo;
+        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + orderId;
         vnp_Params['vnp_OrderType'] = 'other';
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_TxnRef'] = newTransaction._id.toString();
 
-        // Sắp xếp các key
+        // Sắp xếp các key của object
+        const sortedKeys = Object.keys(vnp_Params).sort();
         const sortedParams = {};
-        Object.keys(vnp_Params).sort().forEach(key => {
+        for (const key of sortedKeys) {
             sortedParams[key] = vnp_Params[key];
-        });
+        }
 
         // Tạo chuỗi query string không mã hóa
         const signData = querystring.stringify(sortedParams, { encode: false });
