@@ -1,35 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
+import '../../../shared/theme/app_styles.dart'; // Thêm import
 
 // SỬA LỖI 1: Tên class nên theo quy ước UpperCamelCase
 class DetailsScreen extends StatefulWidget {
-  const DetailsScreen({super.key});
+  // THÊM CÁC THAM SỐ NÀY
+  final String menuItemId;
+  final String imageUrl;
+  final String title;
+  final String description;
+  final double price;
+
+  const DetailsScreen({
+    super.key,
+    required this.menuItemId,
+    required this.imageUrl,
+    required this.title,
+    required this.description,
+    required this.price,
+  });
 
   @override
-  // SỬA LỖI 2: createState phải trả về State<DetailsScreen>
   State<DetailsScreen> createState() => _DetailsScreenState();
 }
 
-// SỬA LỖI 3: State class phải kế thừa từ State<T>
 class _DetailsScreenState extends State<DetailsScreen> {
   int quantity = 1;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // SỬA LỖI 4: Thiếu dấu hai chấm `body:` và dấu ngoặc `()`
       body: SafeArea(
         child: Padding(
-          // SỬA LỖI 5: Thiếu `padding:` và các dấu ngoặc, dấu phẩy
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            // SỬA LỖI 6: Thiếu dấu ngoặc vuông `[` và các dấu phẩy
             children: [
               // Nút quay lại
               GestureDetector(
-                // SỬA LỖI 7: Thiếu `{}` và `;`
                 onTap: () {
                   Navigator.pop(context);
                 },
@@ -47,15 +56,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
               // Ảnh sản phẩm
               Center(
-                child: Image.asset(
-                  // SỬA LỖI 8: Thiếu dấu `/` trong đường dẫn và dấu phẩy
-                  'assets/burger_2gagion.jpg',
-                  // SỬA LỖI 9: Sai cú pháp tính toán và thiếu dấu phẩy
-                  height: MediaQuery.of(context).size.height / 3,
-                ),
+                child: Image.asset(widget.imageUrl, height: MediaQuery.of(context).size.height / 3),
               ),
               const SizedBox(height: 20),
-
+              Text(widget.title, style: AppStyles.headlineTextFeildStyle()),
+              const SizedBox(height: 10),
+              Text(widget.description, style: TextStyle(color: Colors.grey[600], height: 1.5)),
               // Tên sản phẩm
               Text(
                 'Combo Burger Gà + Khoai',
@@ -148,17 +154,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
                                 color: Colors.deepOrange
                             ),
                           ),
+                          Text('${(quantity * widget.price).toStringAsFixed(0)}đ', /*...*/),
                         ],
                       ),
                     ),
+
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
                       onPressed: () {
-                        // Lấy ID của sản phẩm (bạn cần truyền nó vào màn hình này)
-                        final productId = "some_product_id"; // <-- Thay bằng ID thật
-                        Provider.of<CartProvider>(context, listen: false).addItemToCart(productId, quantity: quantity);
-
-                        // Hiển thị thông báo
+                        // SỬ DỤNG ID THẬT
+                        Provider.of<CartProvider>(context, listen: false).addItemToCart(widget.menuItemId, quantity: quantity);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Đã thêm vào giỏ hàng!'), duration: Duration(seconds: 1)),
                         );

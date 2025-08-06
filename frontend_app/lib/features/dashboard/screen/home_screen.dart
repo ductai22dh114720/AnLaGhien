@@ -1,36 +1,12 @@
-// ignore: unused_import
-import 'dart:async'; // Cần cho Timer
 import 'package:flutter/material.dart';
+import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter_dapm/features/authentication/screen/details_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
-import 'package:carousel_slider_plus/carousel_slider_plus.dart';
+import 'package:flutter_dapm/shared/models/menu_item_model.dart';
+import 'package:flutter_dapm/shared/services/product_service.dart';
 import 'package:flutter_dapm/shared/theme/app_styles.dart';
 import 'package:flutter_dapm/shared/widgets/app_bar_cart_icon.dart';
-
-// Dữ liệu mẫu cho slider
-final List<Map<String, String>> popularProducts = [
-  {
-    'image': 'assets/burger_gagion.jpg',
-    'title': 'Burger Gà Giòn',
-    'price': '25.000đ',
-  },
-  {
-    'image': 'assets/burger_2gagion.jpg',
-    'title': 'Burger 2 Gà Giòn',
-    'price': '30.000đ',
-  },
-  {
-    'image': 'assets/burger_2gagion.jpg',
-    'title': 'Burger Đặc Biệt',
-    'price': '35.000đ',
-  },
-  {
-    'image': 'assets/burger_2gagion.jpg',
-    'title': 'Burger Bò Phô Mai',
-    'price': '40.000đ',
-  },
-];
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,69 +15,45 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool burger = false;
-  bool pizza = false;
-  bool burrito = false;
-  bool drink = false;
+  // --- BIẾN TRẠNG THÁI ---
+  bool burger = true, pizza = false, burrito = false, drink = false; // Mặc định chọn burger
+  late Future<List<MenuItemModel>> _menuItemsFuture;
+  final ProductService _productService = ProductService();
 
+  // --- VÒNG ĐỜI WIDGET ---
+  @override
+  void initState() {
+    super.initState();
+    _menuItemsFuture = _productService.getAllMenuItems();
+  }
+
+  // --- HÀM LOGIC ---
+  void _navigateToDetails(MenuItemModel item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DetailsScreen(
+          menuItemId: item.id,
+          imageUrl: item.imageUrl ?? 'https://via.placeholder.com/150',
+          title: item.name,
+          description: "Đây là mô tả mẫu cho món ăn.", // TODO: Thêm trường description vào model
+          price: item.price,
+        ),
+      ),
+    );
+  }
+
+  // --- PHẦN BUILD UI ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // CẢI TIẾN 2: THAY ĐỔI MÀU NỀN TRANG
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.deepOrange,
-        title: Text('TRANG CHỦ'),
+        title: const Text('TRANG CHỦ'),
         centerTitle: true,
-        actions: const [
-          AppBarCartIcon(),
-          SizedBox(width: 10), // Thêm chút khoảng cách
-        ],
+        actions: const [AppBarCartIcon(), SizedBox(width: 10)],
       ),
-      drawer: Drawer(
-        child: Container(
-          color: Colors.deepOrange[200],
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(color: Colors.deepOrange),
-                child: Center(
-                  child: Text(
-                    'L O G O',
-                    style: TextStyle(color: Colors.white, fontSize: 24),
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: Icon(Icons.home),
-                title: Text('Trang Chủ'),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
-                leading: Icon(Icons.person),
-                title: Text('Trang Cá Nhân'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => ProfileScreen()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.shopping_cart),
-                title: Text('Trang Đặt Hàng'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => OrderScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+      drawer: _buildDrawer(), // Gọi hàm helper
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 15.0),
@@ -109,101 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Danh Mục', style: AppStyles.headlineTextFeildStyle()),
-              SizedBox(height: 20.0),
-              _buildCategorySelector(),
-              SizedBox(height: 30.0),
-
-              // CẢI TIẾN 1: THAY THẾ BẰNG CAROUSEL SLIDER
-              Text('Phổ biến', style: AppStyles.headlineTextFeildStyle()),
-              SizedBox(height: 10.0),
-              CarouselSlider.builder(
-                itemCount: popularProducts.length,
-                itemBuilder: (context, index, realIndex) {
-                  final product = popularProducts[index];
-                  // return _buildHorizontalProductCard(
-                  //   product['image']!,
-                  //   product['title']!,
-                  //   product['price']!,
-                  // );
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DetailsScreen(),
-                        ),
-                      );
-                    },
-                    child: _buildHorizontalProductCard(
-                      product['image']!,
-                      product['title']!,
-                      product['price']!,
-                    ),
-                  );
-                },
-                options: CarouselOptions(
-                  height: 220, // Chiều cao của slider
-                  autoPlay: true, // Tự động chạy
-                  enlargeCenterPage: true, // Phóng to item ở giữa
-                  viewportFraction: 0.55, // Hiển thị một phần của item kế tiếp
-                  aspectRatio: 16 / 9,
-                  autoPlayCurve: Curves.fastOutSlowIn,
-                  enableInfiniteScroll: true,
-                  autoPlayAnimationDuration: Duration(milliseconds: 800),
-                ),
-              ),
-              SizedBox(height: 30.0),
-
-              Text(
-                'Gợi ý cho bạn',
-                style: AppStyles.headlineTextFeildStyle(),
-              ),
-              SizedBox(height: 10.0),
-
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DetailsScreen()),
-                  );
-                },
-                child: _buildVerticalProductCard(
-                  'assets/burger_2gagion.jpg',
-                  'Combo Burger Gà + Khoai',
-                  'Tiết kiệm hơn',
-                  '55.000đ',
-                ),
-              ),
-              SizedBox(height: 15.0),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DetailsScreen()),
-                  );
-                },
-                child: _buildVerticalProductCard(
-                  'assets/burger_2gagion.jpg',
-                  'Combo Gia Đình',
-                  '2 Burger + 2 Nước',
-                  '99.000đ',
-                ),
-              ),
-              SizedBox(height: 15.0),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DetailsScreen()),
-                  );
-                },
-                child: _buildVerticalProductCard(
-                  'assets/burger_2gagion.jpg',
-                  'Burger Tôm Hùm',
-                  'Hương vị cao cấp',
-                  '150.000đ',
-                ),
-              ),
+              const SizedBox(height: 20.0),
+              _buildCategorySelector(), // Gọi hàm helper
+              const SizedBox(height: 30.0),
+              _buildProductSections(), // Tách ra widget riêng cho dễ đọc
             ],
           ),
         ),
@@ -211,83 +72,128 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget cho các thẻ sản phẩm cuộn dọc (không thay đổi)
-  Widget _buildVerticalProductCard(
-      String imagePath,
-      String title,
-      String subtitle,
-      String price,
-      ) {
-    return Material(
-      color: Colors.white, // Đảm bảo thẻ luôn màu trắng
-      elevation: 3.0, // Giảm độ nổi một chút cho tinh tế
-      borderRadius: BorderRadius.circular(20.0),
-      child: Container(
-        padding: EdgeInsets.all(10),
-        child: Row(
+  // --- CÁC WIDGET HELPER (ĐÃ ĐƯA TRỞ LẠI VÀO TRONG CLASS) ---
+
+  Widget _buildProductSections() {
+    return FutureBuilder<List<MenuItemModel>>(
+      future: _menuItemsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text("Không có sản phẩm nào."));
+        }
+
+        final allItems = snapshot.data!;
+        final popularItems = allItems.take(4).toList();
+        final suggestedItems = allItems.skip(4).toList();
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15.0),
-              child: Image.asset(
-                imagePath,
-                height: 120,
-                width: 120,
-                fit: BoxFit.cover,
-              ),
+            Text('Phổ biến', style: AppStyles.headlineTextFeildStyle()),
+            const SizedBox(height: 10.0),
+            _buildPopularCarousel(popularItems),
+            const SizedBox(height: 30.0),
+            Text('Gợi ý cho bạn', style: AppStyles.headlineTextFeildStyle()),
+            const SizedBox(height: 10.0),
+            _buildSuggestedList(suggestedItems),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Container(
+        color: Colors.deepOrange[100], // Màu nền nhẹ nhàng hơn
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.deepOrange),
+              child: const Center(child: Text('L O G O', style: TextStyle(color: Colors.white, fontSize: 24))),
             ),
-            SizedBox(width: 20.0),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 10.0),
-                  Text(title, style: AppStyles.boldTextFeildStyle()),
-                  SizedBox(height: 5.0),
-                  Text(subtitle, style: AppStyles.lightTextFeildStyle()),
-                  SizedBox(height: 10.0),
-                  Text(price, style: AppStyles.boldTextFeildStyle()),
-                ],
-              ),
-            ),
+            ListTile(leading: const Icon(Icons.home), title: const Text('Trang Chủ'), onTap: () => Navigator.pop(context)),
+            ListTile(leading: const Icon(Icons.person), title: const Text('Trang Cá Nhân'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen())); }),
+            ListTile(leading: const Icon(Icons.shopping_cart), title: const Text('Đơn hàng'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const OrderScreen())); }),
           ],
         ),
       ),
     );
   }
 
-  // Widget cho các thẻ sản phẩm cuộn ngang (trong slider)
-  Widget _buildHorizontalProductCard(
-      String imagePath,
-      String title,
-      String price,
-      ) {
-    return Container(
-      // Bỏ margin ở đây vì CarouselSlider đã có khoảng cách
+  Widget _buildCategorySelector() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildCategoryIcon(() => setState(() { burger = true; pizza = false; drink = false; burrito = false; }), 'assets/burger.png', burger),
+        _buildCategoryIcon(() => setState(() { burger = false; pizza = false; drink = false; burrito = true; }), 'assets/burrito.png', burrito),
+        _buildCategoryIcon(() => setState(() { burger = false; pizza = true; drink = false; burrito = false; }), 'assets/pizza.png', pizza),
+        _buildCategoryIcon(() => setState(() { burger = false; pizza = false; drink = true; burrito = false; }), 'assets/drink.png', drink),
+      ],
+    );
+  }
+
+  Widget _buildCategoryIcon(VoidCallback onTap, String imagePath, bool isSelected) {
+    return GestureDetector(
+      onTap: onTap,
       child: Material(
-        color: Colors.white, // Đảm bảo thẻ luôn màu trắng
-        elevation: 3.0,
-        borderRadius: BorderRadius.circular(20.0),
+        elevation: 3.0, borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(color: isSelected ? Colors.deepOrange : Colors.white, borderRadius: BorderRadius.circular(10)),
+          padding: const EdgeInsets.all(8),
+          child: Image.asset(imagePath, height: 50, width: 50, fit: BoxFit.contain, color: isSelected ? Colors.white : Colors.black),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPopularCarousel(List<MenuItemModel> items) {
+    return CarouselSlider.builder(
+      itemCount: items.length,
+      itemBuilder: (context, index, realIndex) {
+        final item = items[index];
+        return GestureDetector(
+          onTap: () => _navigateToDetails(item),
+          child: _buildHorizontalProductCard(item),
+        );
+      },
+      options: CarouselOptions(height: 220, autoPlay: true, enlargeCenterPage: true, viewportFraction: 0.55),
+    );
+  }
+
+  Widget _buildSuggestedList(List<MenuItemModel> items) {
+    return ListView.separated(
+      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return GestureDetector(
+          onTap: () => _navigateToDetails(item),
+          child: _buildVerticalProductCard(item),
+        );
+      },
+      separatorBuilder: (_, __) => const SizedBox(height: 15.0),
+    );
+  }
+
+  Widget _buildHorizontalProductCard(MenuItemModel item) {
+    return Container(
+      child: Material(
+        color: Colors.white, elevation: 3.0, borderRadius: BorderRadius.circular(20.0),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                // Sử dụng Expanded để ảnh lấp đầy không gian
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20.0),
-                  child: Image.asset(
-                    imagePath,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.0),
-              Text(title, style: AppStyles.boldTextFeildStyle()),
-              SizedBox(height: 5.0),
-              Text(price, style: AppStyles.boldTextFeildStyle()),
+              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(15.0), child: Image.network(item.imageUrl ?? 'https://via.placeholder.com/150', fit: BoxFit.cover, width: double.infinity))),
+              const SizedBox(height: 10.0),
+              Text(item.name, style: AppStyles.boldTextFeildStyle(), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 5.0),
+              Text('${item.price.toStringAsFixed(0)}đ', style: AppStyles.boldTextFeildStyle()),
             ],
           ),
         ),
@@ -295,79 +201,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget cho việc chọn danh mục (không thay đổi)
-  Widget _buildCategorySelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildCategoryIcon(
-              () => setState(() {
-            burger = true;
-            pizza = false;
-            drink = false;
-            burrito = false;
-          }),
-          'assets/burger.png',
-          burger,
-        ),
-        _buildCategoryIcon(
-              () => setState(() {
-            burger = false;
-            pizza = false;
-            drink = false;
-            burrito = true;
-          }),
-          'assets/burrito.png',
-          burrito,
-        ),
-        _buildCategoryIcon(
-              () => setState(() {
-            burger = false;
-            pizza = true;
-            drink = false;
-            burrito = false;
-          }),
-          'assets/pizza.png',
-          pizza,
-        ),
-        _buildCategoryIcon(
-              () => setState(() {
-            burger = false;
-            pizza = false;
-            drink = true;
-            burrito = false;
-          }),
-          'assets/drink.png',
-          drink,
-        ),
-      ],
-    );
-  }
-
-  // Widget con cho một icon danh mục
-  Widget _buildCategoryIcon(
-      VoidCallback onTap,
-      String imagePath,
-      bool isSelected,
-      ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Material(
-        elevation: 3.0,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.deepOrange : Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: EdgeInsets.all(8),
-          child: Image.asset(
-            imagePath,
-            height: 50,
-            width: 50,
-            fit: BoxFit.contain,
-            color: isSelected ? Colors.white : Colors.black,
-          ),
+  Widget _buildVerticalProductCard(MenuItemModel item) {
+    return Material(
+      color: Colors.white, elevation: 3.0, borderRadius: BorderRadius.circular(20.0),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(15.0),
+              child: Image.network(item.imageUrl ?? 'https://via.placeholder.com/150', height: 120, width: 120, fit: BoxFit.cover),
+            ),
+            const SizedBox(width: 20.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.name, style: AppStyles.boldTextFeildStyle()),
+                  const SizedBox(height: 5.0),
+                  Text("Mô tả ngắn gọn...", style: AppStyles.lightTextFeildStyle()),
+                  const SizedBox(height: 10.0),
+                  Text('${item.price.toStringAsFixed(0)}đ', style: AppStyles.boldTextFeildStyle()),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

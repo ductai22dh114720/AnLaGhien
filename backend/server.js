@@ -22,6 +22,7 @@ const userRoutes = require('./routes/user.route');
 const paymentRoutes = require('./routes/payment.route');
 const walletRoutes = require('./routes/wallet.route');
 const cartRoutes = require('./routes/cart.route');
+const menuItemRoutes = require('./routes/menuItem.route');
 // Sử dụng routes
 // Tất cả các route trong auth.route.js sẽ có tiền tố /api/auth
 app.use('/api/auth', authRoutes);
@@ -29,6 +30,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/menu-items', menuItemRoutes);
 
 const PORT = process.env.PORT || 5000;
 
