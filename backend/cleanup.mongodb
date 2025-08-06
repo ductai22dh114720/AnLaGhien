@@ -1,0 +1,8 @@
+// Chọn database để làm việc
+use("test");
+
+// Chạy lệnh xóa
+db.transactions.deleteMany({ status: "pending" });
+
+// Để xem kết quả trước khi xóa, hãy chạy lệnh find trước
+db.transactions.find({ status: "pending" });
