@@ -5,13 +5,21 @@ const MenuItem = require('../models/menuItem.model');
 exports.getCart = async (req, res) => {
     try {
         const userId = req.userData.userId;
-        const cart = await Cart.findOne({ user: userId }).populate('items.menuItem');
+        // KIỂM TRA LẠI LOGIC POPULATE
+        const cart = await Cart.findOne({ user: userId }).populate({
+            path: 'items.menuItem',
+            model: 'MenuItem' // Chỉ định rõ model để populate
+        });
 
         if (!cart) {
-            return res.status(404).json({ message: "Không tìm thấy giỏ hàng." });
+            // Nếu không có giỏ hàng, có thể tạo mới một cái
+            const newCart = new Cart({ user: userId, items: [] });
+            await newCart.save();
+            return res.status(200).json(newCart);
         }
         res.status(200).json(cart);
     } catch (error) {
+        console.error("Lỗi khi getCart:", error); // Thêm log lỗi
         res.status(500).json({ message: "Lỗi khi lấy giỏ hàng." });
     }
 };
@@ -23,26 +31,28 @@ exports.addItemToCart = async (req, res) => {
         const { menuItemId, quantity } = req.body;
 
         const cart = await Cart.findOne({ user: userId });
+        if (!cart) { // Thêm kiểm tra nếu không có giỏ
+             return res.status(404).json({ message: "Không tìm thấy giỏ hàng." });
+        }
         const menuItem = await MenuItem.findById(menuItemId);
         if (!menuItem) {
             return res.status(404).json({ message: "Không tìm thấy sản phẩm." });
         }
 
-        const itemIndex = cart.items.findIndex(item => item.menuItem.equals(menuItemId));
+        const itemIndex = cart.items.findIndex(item => item.menuItem.toString() === menuItemId);
 
         if (itemIndex > -1) {
-            // Nếu sản phẩm đã có, cập nhật số lượng
             cart.items[itemIndex].quantity += quantity;
         } else {
-            // Nếu sản phẩm chưa có, thêm mới
             cart.items.push({ menuItem: menuItemId, quantity });
         }
 
         const updatedCart = await cart.save();
-        await updatedCart.populate('items.menuItem'); // Lấy lại thông tin chi tiết của sản phẩm
+        await updatedCart.populate({ path: 'items.menuItem', model: 'MenuItem' });
 
         res.status(200).json(updatedCart);
     } catch (error) {
+        console.error("Lỗi khi addItemToCart:", error); // Thêm log lỗi
         res.status(500).json({ message: "Lỗi khi thêm sản phẩm vào giỏ." });
     }
 };

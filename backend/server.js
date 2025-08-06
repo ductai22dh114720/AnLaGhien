@@ -29,6 +29,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/cart', cartRoutes);
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
