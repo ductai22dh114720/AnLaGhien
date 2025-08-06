@@ -1,100 +1,101 @@
-     const moment = require('moment');
-     const querystring = require('qs');
-     const crypto = require("crypto");
+const moment = require('moment');
+const querystring = require('qs');
+const crypto = require("crypto");
 
-     const Wallet = require('../models/wallet.model');
-     const Transaction = require('../models/transaction.model');
+const Wallet = require('../models/wallet.model');
+const Transaction = require('../models/transaction.model');
 
-     // --- HÀM TẠO THANH TOÁN VNPAY (PHIÊN BẢN MỚI) ---
-     exports.createVnpayPayment = async (req, res) => {
-         try {
-             process.env.TZ = 'Asia/Ho_Chi_Minh';
-             const date = new Date();
+exports.createVnpayPayment = async (req, res) => {
+    try {
+        process.env.TZ = 'Asia/Ho_Chi_Minh';
 
-             const ipAddr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-             const tmnCode = process.env.VNPAY_TMN_CODE;
-             const secretKey = process.env.VNPAY_HASH_SECRET;
-             let vnpUrl = process.env.VNPAY_URL;
-             const returnUrl = process.env.VNPAY_RETURN_URL;
+        const ipAddr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const secretKey = process.env.VNPAY_HASH_SECRET;
+        let vnpUrl = process.env.VNPAY_URL;
+        const returnUrl = process.env.VNPAY_RETURN_URL;
 
-             const orderId = moment(date).format('HHmmss');
-             const amount = req.body.amount;
+        const date = new Date();
+        const createDate = moment(date).format('YYYYMMDDHHmmss');
+        const orderId = moment(date).format('HHmmss');
+        const amount = req.body.amount;
 
-             // Tạo giao dịch trong DB (logic của bạn đã đúng)
-             const userId = req.userData.userId;
-             const wallet = await Wallet.findOne({ user: userId });
-             if (!wallet) {
-                 return res.status(404).json({ message: "Không tìm thấy ví của người dùng." });
-             }
-             const newTransaction = new Transaction({
-                 wallet: wallet._id, amount: amount, type: 'deposit',
-                 status: 'pending', paymentMethod: 'vnpay',
-             });
-             await newTransaction.save();
-             // Kết thúc tạo giao dịch
+        const userId = req.userData.userId;
+        const wallet = await Wallet.findOne({ user: userId });
+        if (!wallet) {
+            return res.status(404).json({ message: "Không tìm thấy ví của người dùng." });
+        }
+        const newTransaction = new Transaction({
+            wallet: wallet._id, amount: amount, type: 'deposit',
+            status: 'pending', paymentMethod: 'vnpay',
+        });
+        await newTransaction.save();
 
-             let vnp_Params = {};
-             vnp_Params['vnp_Version'] = '2.1.0';
-             vnp_Params['vnp_Command'] = 'pay';
-             vnp_Params['vnp_TmnCode'] = tmnCode;
-             vnp_Params['vnp_Amount'] = amount * 100;
-             vnp_Params['vnp_CurrCode'] = 'VND';
-             vnp_Params['vnp_TxnRef'] = newTransaction._id.toString(); // Dùng ID duy nhất từ DB
-             vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + newTransaction._id.toString();
-             vnp_Params['vnp_OrderType'] = 'other';
-             vnp_Params['vnp_ReturnUrl'] = returnUrl;
-             vnp_Params['vnp_IpAddr'] = ipAddr;
-             vnp_Params['vnp_CreateDate'] = moment(date).format('YYYYMMDDHHmmss');
-             vnp_Params['vnp_Locale'] = 'vn';
+        let vnp_Params = {};
+        vnp_Params['vnp_Version'] = '2.1.0';
+        vnp_Params['vnp_Command'] = 'pay';
+        vnp_Params['vnp_TmnCode'] = process.env.VNPAY_TMN_CODE;
+        vnp_Params['vnp_Amount'] = amount * 100;
+        vnp_Params['vnp_CreateDate'] = createDate;
+        vnp_Params['vnp_CurrCode'] = 'VND';
+        vnp_Params['vnp_IpAddr'] = ipAddr;
+        vnp_Params['vnp_Locale'] = 'vn';
+        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + orderId;
+        vnp_Params['vnp_OrderType'] = 'other';
+        vnp_Params['vnp_ReturnUrl'] = returnUrl;
+        vnp_Params['vnp_TxnRef'] = orderId;
 
-             // Sắp xếp các key của object
-             const sortedKeys = Object.keys(vnp_Params).sort();
-             const sortedParams = {};
-             for (const key of sortedKeys) {
-                 sortedParams[key] = vnp_Params[key];
-             }
+        // --- BẮT ĐẦU LOGIC TẠO CHỮ KÝ MỚI, ĐÚNG CHUẨN ---
 
-             // Tạo chuỗi query string
-             const signData = querystring.stringify(sortedParams, {
-                 encode: false,
-                 // Cấu hình để qs không mã hóa các ký tự đặc biệt theo cách của VNPay
-                 format: 'RFC1738'
-             });
+        // 1. Sắp xếp các key
+        const sortedKeys = Object.keys(vnp_Params).sort();
 
-             // Tạo chữ ký
-             const hmac = crypto.createHmac("sha512", secretKey);
-             const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
+        // 2. Tạo chuỗi signData thủ công
+        let signData = "";
+        for (const key of sortedKeys) {
+            if (vnp_Params[key] !== '' && vnp_Params[key] !== undefined && vnp_Params[key] !== null) {
+                // Nối key=value&
+                signData += (signData.length === 0 ? '' : '&') + key + '=' + vnp_Params[key];
+            }
+        }
 
-             // Thêm chữ ký vào cuối URL
-             const finalUrl = vnpUrl + '?' + querystring.stringify(sortedParams, { encode: true }) + '&vnp_SecureHash=' + signed;
+        // 3. Tạo chữ ký
+        const hmac = crypto.createHmac("sha512", secretKey);
+        const vnp_SecureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-             res.status(200).json({ paymentUrl: finalUrl });
+        // 4. Thêm chữ ký vào cuối chuỗi query string
+        const queryString = querystring.stringify(vnp_Params, { encode: true });
+        const finalUrl = vnpUrl + '?' + queryString + '&vnp_SecureHash=' + vnp_SecureHash;
+        // --- KẾT THÚC LOGIC MỚI ---
 
-         } catch (error) {
-             console.error("Lỗi khi tạo thanh toán VNPay:", error);
-             res.status(500).json({ message: "Không thể tạo yêu cầu thanh toán." });
-         }
-     };
+        res.status(200).json({ paymentUrl: finalUrl });
+
+    } catch (error) {
+        console.error("Lỗi khi tạo thanh toán VNPay:", error);
+        res.status(500).json({ message: "Không thể tạo yêu cầu thanh toán." });
+    }
+};
 
 
-// --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY ---
 // --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ HOÀN THIỆN) ---
 exports.handleVnpayReturn = async (req, res) => {
     try {
         let vnp_Params = req.query;
         const secureHash = vnp_Params['vnp_SecureHash'];
 
-        // Lấy lại mã giao dịch của chúng ta từ vnp_TxnRef
-        const transactionId = vnp_Params['vnp_TxnRef'];
-
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        // Sắp xếp lại các tham số để tạo lại chữ ký
-        vnp_Params = sortObject(vnp_Params);
+        // Sắp xếp
+        const sortedKeys = Object.keys(vnp_Params).sort();
+        const sortedParams = {};
+        for (const key of sortedKeys) {
+            sortedParams[key] = vnp_Params[key];
+        }
+
+        // Tạo lại signData để kiểm tra
+        const signData = querystring.stringify(sortedParams, { encode: false });
 
         const secretKey = process.env.VNPAY_HASH_SECRET;
-        const signData = querystring.stringify(vnp_Params, { encode: false });
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
@@ -137,18 +138,3 @@ exports.handleVnpayReturn = async (req, res) => {
         return res.status(500).send("<h1>Đã có lỗi xảy ra</h1>");
     }
 };
-function sortObject(obj) {
-	let sorted = {};
-	let str = [];
-	let key;
-	for (key in obj){
-		if (obj.hasOwnProperty(key)) {
-		str.push(encodeURIComponent(key));
-		}
-	}
-	str.sort();
-    for (key = 0; key < str.length; key++) {
-        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-    }
-    return sorted;
-}
