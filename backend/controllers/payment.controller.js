@@ -178,6 +178,16 @@ const crypto = require("crypto");
 const Wallet = require('../models/wallet.model');
 const Transaction = require('../models/transaction.model');
 
+function sortObject(obj) {
+    const sorted = {};
+    // Lấy tất cả các key của object và sort chúng
+    const keys = Object.keys(obj).sort();
+    // Duyệt qua các key đã được sort
+    for (const key of keys) {
+        sorted[key] = obj[key];
+    }
+    return sorted;
+}
 // --- HÀM TẠO THANH TOÁN VNPAY (GIỮ NGUYÊN PHIÊN BẢN ĐÃ HOẠT ĐỘNG) ---
 exports.createVnpayPayment = async (req, res) => {
     try {
@@ -245,12 +255,11 @@ exports.handleVnpayReturn = async (req, res) => {
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        // SỬ DỤNG LẠI HÀM sortObject NGUYÊN BẢN
-        vnp_Params = sortObject(vnp_Params);
-
+        // SỬ DỤNG HÀM sortObject MỚI, AN TOÀN
+        const sortedParams = sortObject(vnp_Params);
         const secretKey = process.env.VNPAY_HASH_SECRET;
-        const signData = querystring.stringify(vnp_Params, { encode: false });
-        const hmac = crypto.createHmac("sha512", secretKey);
+        const signData = querystring.stringify(sortedParams, { encode: false });
+        const hmac = crypto.createHmac("sha522", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
         if (secureHash === signed) {
@@ -270,11 +279,7 @@ exports.handleVnpayReturn = async (req, res) => {
                 return res.send("<h1>Thanh toán thất bại!</h1>");
             }
         } else {
-            // Thêm log để biết chữ ký bị sai ở đâu
-            console.log('--- Chữ ký không hợp lệ khi Return ---');
-            console.log('Received Hash:', secureHash);
-            console.log('Generated Hash:', signed);
-            return res.send("<h1>Giao dịch không hợp lệ!</h1><p>Chữ ký không khớp.</p>");
+            return res.send("<h1>Chữ ký không hợp lệ!</h1>");
         }
     } catch (error) {
         console.error("Lỗi khi xử lý VNPay return:", error);
@@ -283,18 +288,18 @@ exports.handleVnpayReturn = async (req, res) => {
 };
 
 // HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
-function sortObject(obj) {
-	let sorted = {};
-	let str = [];
-	let key;
-	for (key in obj){
-		if (obj.hasOwnProperty(key)) {
-		    str.push(encodeURIComponent(key));
-		}
-	}
-	str.sort();
-    for (key = 0; key < str.length; key++) {
-        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-    }
-    return sorted;
-}
+//function sortObject(obj) {
+//	let sorted = {};
+//	let str = [];
+//	let key;
+//	for (key in obj){
+//		if (obj.hasOwnProperty(key)) {
+//		    str.push(encodeURIComponent(key));
+//		}
+//	}
+//	str.sort();
+//    for (key = 0; key < str.length; key++) {
+//        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+//    }
+//    return sorted;
+//}
