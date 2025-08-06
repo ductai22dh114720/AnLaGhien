@@ -4,6 +4,7 @@ import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:flutter_dapm/shared/models/transaction_model.dart';
 import 'package:flutter_dapm/shared/screens/webview_screen.dart';
 import 'package:flutter_dapm/shared/services/wallet_service.dart';
+import 'package:flutter_dapm/shared/services/payment_service.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 
@@ -16,6 +17,8 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   final _walletService = WalletService();
+  final _paymentService = PaymentService();
+
   late Future<Map<String, dynamic>?> _walletInfoFuture;
   final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
@@ -53,52 +56,29 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _handleTopUpWithVnpay() async {
     const int amount = 50000;
-    try {
-      final dio = Dio();
-      const String apiUrl = '${ApiConfig.baseUrl}/payment/vnpay-create';
-      final response = await dio.post(apiUrl, data: {'amount': amount});
+
+    // Gọi hàm từ PaymentService
+    final String? paymentUrl = await _paymentService.createVnpayPaymentUrl(amount);
+
+    if (!mounted) return;
+
+    if (paymentUrl != null) {
+      final result = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => WebViewScreen(initialUrl: paymentUrl, title: 'Thanh toán VNPay'),
+        ),
+      );
 
       if (!mounted) return;
-      if (response.statusCode == 200 && response.data['paymentUrl'] != null) {
-        final String paymentUrl = response.data['paymentUrl'];
-        final result = await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder:
-                (context) => WebViewScreen(
-                  initialUrl: paymentUrl,
-                  title: 'Thanh toán VNPay',
-                ),
-          ),
-        );
 
-        if (!mounted) return;
-        if (result == 'success') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nạp tiền thành công!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          _loadWalletInfo(); // Sửa ở đây: Gọi lại hàm tải dữ liệu
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Giao dịch đã bị hủy hoặc thất bại.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+      if (result == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nạp tiền thành công!'), backgroundColor: Colors.green));
+        _loadWalletInfo();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Giao dịch đã bị hủy hoặc thất bại.'), backgroundColor: Colors.orange));
       }
-    } on DioException catch (e) {
-      debugPrint('Lỗi khi gọi API VNPay: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể tạo yêu cầu thanh toán.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể tạo yêu cầu thanh toán.'), backgroundColor: Colors.red));
     }
   }
 
