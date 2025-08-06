@@ -78,50 +78,77 @@
 
 
 // --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY ---
+// --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ HOÀN THIỆN) ---
 exports.handleVnpayReturn = async (req, res) => {
-    let vnp_Params = req.query;
-    const secureHash = vnp_Params['vnp_SecureHash'];
-    const transactionId = vnp_Params['vnp_TxnRef']; // Lấy lại ID giao dịch
+    try {
+        let vnp_Params = req.query;
+        const secureHash = vnp_Params['vnp_SecureHash'];
 
-    delete vnp_Params['vnp_SecureHash'];
-    delete vnp_Params['vnp_SecureHashType'];
+        // Lấy lại mã giao dịch của chúng ta từ vnp_TxnRef
+        const transactionId = vnp_Params['vnp_TxnRef'];
 
-    vnp_Params = sortObject(vnp_Params);
+        delete vnp_Params['vnp_SecureHash'];
+        delete vnp_Params['vnp_SecureHashType'];
 
-    const secretKey = process.env.VNPAY_HASH_SECRET;
-    const signData = querystring.stringify(vnp_Params, { encode: false });
-    const hmac = crypto.createHmac("sha512", secretKey);
-    const signed = hmac.update(new Buffer.from(signData, 'utf-8')).digest("hex");
+        // Sắp xếp lại các tham số để tạo lại chữ ký
+        vnp_Params = sortObject(vnp_Params);
 
-    if (secureHash === signed) {
-        const transaction = await Transaction.findById(transactionId);
-        if (!transaction) {
-            return res.status(404).send("<h1>Giao dịch không tồn tại</h1>");
-        }
+        const secretKey = process.env.VNPAY_HASH_SECRET;
+        const signData = querystring.stringify(vnp_Params, { encode: false });
+        const hmac = crypto.createHmac("sha512", secretKey);
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-        // Chỉ xử lý nếu giao dịch đang ở trạng thái 'pending'
-        if (transaction.status === 'pending') {
+        if (secureHash === signed) {
+            // Chữ ký hợp lệ, tiếp tục xử lý
+            const transaction = await Transaction.findById(transactionId);
+            if (!transaction) {
+                return res.status(200).json({ RspCode: '01', Message: 'Order not found' });
+            }
+
+            // Chỉ xử lý nếu giao dịch đang chờ
+            if (transaction.status !== 'pending') {
+                return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
+            }
+
+            // Kiểm tra mã kết quả từ VNPay
             if (vnp_Params['vnp_ResponseCode'] === '00') {
-                // Giao dịch thành công
+                // Giao dịch thành công trên VNPay
                 transaction.status = 'completed';
                 transaction.transactionCode = vnp_Params['vnp_TransactionNo']; // Lưu mã GD của VNPay
                 await transaction.save();
 
-                // Cộng tiền vào ví
+                // Cộng tiền vào ví của người dùng
                 await Wallet.findByIdAndUpdate(transaction.wallet, { $inc: { balance: transaction.amount } });
 
-                return res.send("<h1>Thanh toán thành công!</h1><p>Bạn có thể đóng cửa sổ này.</p>");
+                // Trả về trang HTML thông báo thành công
+                return res.send("<h1>Thanh toán thành công!</h1><p>Giao dịch của bạn đã được xử lý. Bạn có thể đóng cửa sổ này.</p>");
             } else {
-                // Giao dịch thất bại
+                // Giao dịch thất bại trên VNPay
                 transaction.status = 'failed';
                 await transaction.save();
-                return res.send("<h1>Thanh toán thất bại!</h1><p>Bạn có thể đóng cửa sổ này.</p>");
+                return res.send("<h1>Thanh toán thất bại!</h1><p>Đã có lỗi xảy ra trong quá trình thanh toán.</p>");
             }
         } else {
-            // Giao dịch đã được xử lý trước đó (ví dụ qua IPN)
-             return res.send("<h1>Giao dịch đã được xử lý.</h1><p>Bạn có thể đóng cửa sổ này.</p>");
+            // Chữ ký không hợp lệ
+            return res.send("<h1>Giao dịch không hợp lệ!</h1><p>Chữ ký không khớp.</p>");
         }
-    } else {
-        res.send("<h1>Chữ ký không hợp lệ!</h1>");
+    } catch (error) {
+        console.error("Lỗi khi xử lý VNPay return:", error);
+        return res.status(500).send("<h1>Đã có lỗi xảy ra</h1>");
     }
 };
+function sortObject(obj) {
+	let sorted = {};
+	let str = [];
+	let key;
+	for (key in obj){
+		if (obj.hasOwnProperty(key)) {
+		str.push(encodeURIComponent(key));
+		}
+	}
+	str.sort();
+    for (key = 0; key < str.length; key++) {
+        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+    }
+    return sorted;
+}
