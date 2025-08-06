@@ -39,19 +39,22 @@ exports.createVnpayPayment = async (req, res) => {
         vnp_Params['vnp_CurrCode'] = 'VND';
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_Locale'] = 'vn';
-        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + orderId;
+        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + newTransaction._id.toString();
         vnp_Params['vnp_OrderType'] = 'other';
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_TxnRef'] = newTransaction._id.toString();
 
-        const sortedParams = sortObject(vnp_Params);
-        const signData = querystring.stringify(sortedParams, { encode: false });
+        // SỬ DỤNG LẠI LOGIC sortObject CŨ ĐÃ HOẠT ĐỘNG
+        vnp_Params = sortObject(vnp_Params);
+
+        const signData = querystring.stringify(vnp_Params, { encode: false });
 
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-        sortedParams['vnp_SecureHash'] = signed;
-        vnpUrl += '?' + querystring.stringify(sortedParams, { encode: true });
+        vnp_Params['vnp_SecureHash'] = signed;
+
+        vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
 
         res.status(200).json({ paymentUrl: vnpUrl });
 
@@ -62,8 +65,6 @@ exports.createVnpayPayment = async (req, res) => {
 };
 
 
-
-// --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ SỬA LỖI hasOwnProperty) ---
 exports.handleVnpayReturn = async (req, res) => {
     try {
         let vnp_Params = req.query;
@@ -73,9 +74,11 @@ exports.handleVnpayReturn = async (req, res) => {
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        const sortedParams = sortObject(vnp_Params);
+        // SỬ DỤNG HÀM sortObject NGUYÊN BẢN
+        vnp_Params = sortObject(vnp_Params);
+
         const secretKey = process.env.VNPAY_HASH_SECRET;
-        const signData = querystring.stringify(sortedParams, { encode: false });
+        const signData = querystring.stringify(vnp_Params, { encode: false });
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
@@ -104,14 +107,19 @@ exports.handleVnpayReturn = async (req, res) => {
     }
 };
 
-// HÀM HELPER ĐÃ ĐƯỢC SỬA LỖI
+// HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
 function sortObject(obj) {
-    const sorted = {};
-    // Lấy tất cả các key của object và sort chúng
-    const keys = Object.keys(obj).sort();
-    // Duyệt qua các key đã được sort
-    for (const key of keys) {
-        sorted[key] = obj[key];
+	let sorted = {};
+	let str = [];
+	let key;
+	for (key in obj){
+		if (obj.hasOwnProperty(key)) {
+		str.push(encodeURIComponent(key));
+		}
+	}
+	str.sort();
+    for (key = 0; key < str.length; key++) {
+        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
     }
     return sorted;
 }
