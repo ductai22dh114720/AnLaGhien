@@ -39,22 +39,19 @@ exports.createVnpayPayment = async (req, res) => {
         vnp_Params['vnp_CurrCode'] = 'VND';
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_Locale'] = 'vn';
-        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + newTransaction._id.toString();
+        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + orderId;
         vnp_Params['vnp_OrderType'] = 'other';
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_TxnRef'] = newTransaction._id.toString();
 
-        // SỬ DỤNG LẠI LOGIC sortObject CŨ ĐÃ HOẠT ĐỘNG
-        vnp_Params = sortObject(vnp_Params);
-
-        const signData = querystring.stringify(vnp_Params, { encode: false });
+        const sortedParams = sortObject(vnp_Params);
+        const signData = querystring.stringify(sortedParams, { encode: false });
 
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-        vnp_Params['vnp_SecureHash'] = signed;
-
-        vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
+        sortedParams['vnp_SecureHash'] = signed;
+        vnpUrl += '?' + querystring.stringify(sortedParams, { encode: true });
 
         res.status(200).json({ paymentUrl: vnpUrl });
 
@@ -63,6 +60,7 @@ exports.createVnpayPayment = async (req, res) => {
         res.status(500).json({ message: "Không thể tạo yêu cầu thanh toán." });
     }
 };
+
 
 
 // --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ SỬA LỖI hasOwnProperty) ---
