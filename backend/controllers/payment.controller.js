@@ -154,23 +154,22 @@
 //};
 //
 //
-
-//function sortObject(obj) {
-//	let sorted = {};
-//	let str = [];
-//	let key;
-//	for (key in obj){
-//		if (obj.hasOwnProperty(key)) {
-//		    str.push(encodeURIComponent(key));
-//		}
-//	}
-//	str.sort();
-//    for (key = 0; key < str.length; key++) {
-//        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-//    }
-//    return sorted;
-//}
-
+ HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
+function sortObject(obj) {
+	let sorted = {};
+	let str = [];
+	let key;
+	for (key in obj){
+		if (obj.hasOwnProperty(key)) {
+		    str.push(encodeURIComponent(key));
+		}
+	}
+	str.sort();
+    for (key = 0; key < str.length; key++) {
+        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+    }
+    return sorted;
+}
 const moment = require('moment');
 const querystring = require('qs');
 const crypto = require("crypto");
@@ -287,19 +286,3 @@ exports.handleVnpayReturn = async (req, res) => {
     }
 };
 
-// HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
-//function sortObject(obj) {
-//	let sorted = {};
-//	let str = [];
-//	let key;
-//	for (key in obj){
-//		if (obj.hasOwnProperty(key)) {
-//		    str.push(encodeURIComponent(key));
-//		}
-//	}
-//	str.sort();
-//    for (key = 0; key < str.length; key++) {
-//        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-//    }
-//    return sorted;
-//}
