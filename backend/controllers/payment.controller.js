@@ -155,21 +155,7 @@
 //
 //
 // HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO CỦA VNPAY
-function sortObject(obj) {
-	let sorted = {};
-	let str = [];
-	let key;
-	for (key in obj){
-		if (obj.hasOwnProperty(key)) {
-		    str.push(encodeURIComponent(key));
-		}
-	}
-	str.sort();
-    for (key = 0; key < str.length; key++) {
-        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-    }
-    return sorted;
-}
+
 const moment = require('moment');
 const querystring = require('qs');
 const crypto = require("crypto");
@@ -178,15 +164,21 @@ const Wallet = require('../models/wallet.model');
 const Transaction = require('../models/transaction.model');
 
 function sortObject(obj) {
-    const sorted = {};
-    // Lấy tất cả các key của object và sort chúng
-    const keys = Object.keys(obj).sort();
-    // Duyệt qua các key đã được sort
-    for (const key of keys) {
-        sorted[key] = obj[key];
+    	let sorted = {};
+    	let str = [];
+    	let key;
+    	for (key in obj){
+    		if (obj.hasOwnProperty(key)) {
+    		    str.push(encodeURIComponent(key));
+    		}
+    	}
+    	str.sort();
+        for (key = 0; key < str.length; key++) {
+            sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+        }
+        return sorted;
     }
-    return sorted;
-}
+
 // --- HÀM TẠO THANH TOÁN VNPAY (GIỮ NGUYÊN PHIÊN BẢN ĐÃ HOẠT ĐỘNG) ---
 exports.createVnpayPayment = async (req, res) => {
     try {
