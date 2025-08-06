@@ -163,21 +163,7 @@ const crypto = require("crypto");
 const Wallet = require('../models/wallet.model');
 const Transaction = require('../models/transaction.model');
 
-function sortObject(obj) {
-    	let sorted = {};
-    	let str = [];
-    	let key;
-    	for (key in obj){
-    		if (obj.hasOwnProperty(key)) {
-    		    str.push(encodeURIComponent(key));
-    		}
-    	}
-    	str.sort();
-        for (key = 0; key < str.length; key++) {
-            sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-        }
-        return sorted;
-    }
+
 
 // --- HÀM TẠO THANH TOÁN VNPAY (GIỮ NGUYÊN PHIÊN BẢN ĐÃ HOẠT ĐỘNG) ---
 exports.createVnpayPayment = async (req, res) => {
@@ -246,11 +232,12 @@ exports.handleVnpayReturn = async (req, res) => {
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        // SỬ DỤNG HÀM sortObject MỚI, AN TOÀN
-        const sortedParams = sortObject(vnp_Params);
+        // SỬ DỤNG HÀM sortObject ĐÃ ĐƯỢC SỬA LỖI
+        vnp_Params = sortObject(vnp_Params);
+
         const secretKey = process.env.VNPAY_HASH_SECRET;
-        const signData = querystring.stringify(sortedParams, { encode: false });
-        const hmac = crypto.createHmac("sha522", secretKey);
+        const signData = querystring.stringify(vnp_Params, { encode: false });
+        const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
         if (secureHash === signed) {
@@ -278,3 +265,22 @@ exports.handleVnpayReturn = async (req, res) => {
     }
 };
 
+// HÀM sortObject ĐÃ SỬA LỖI hasOwnProperty VÀ VẪN GIỮ LOGIC MÃ HÓA CỦA VNPAY
+function sortObject(obj) {
+    const sorted = {};
+    // Sử dụng Object.keys để lấy một mảng các key an toàn
+    const keys = Object.keys(obj);
+
+    // Mã hóa các key trước khi sắp xếp
+    const encodedKeys = keys.map(key => encodeURIComponent(key));
+    encodedKeys.sort();
+
+    // Duyệt qua các key đã được mã hóa và sắp xếp
+    for (const encodedKey of encodedKeys) {
+        // Giải mã lại key để lấy giá trị từ object gốc
+        const originalKey = decodeURIComponent(encodedKey);
+        // Mã hóa value theo đúng chuẩn VNPay
+        sorted[encodedKey] = encodeURIComponent(obj[originalKey]).replace(/%20/g, "+");
+    }
+    return sorted;
+}
