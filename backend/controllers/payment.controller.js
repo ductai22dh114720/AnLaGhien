@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const Wallet = require('../models/wallet.model');
 const Transaction = require('../models/transaction.model');
 
-// --- HÀM TẠO THANH TOÁN VNPAY ---
+// --- HÀM TẠO THANH TOÁN VNPAY (Lấy lại phiên bản ĐÃ HOẠT ĐỘNG) ---
 exports.createVnpayPayment = async (req, res) => {
     try {
         process.env.TZ = 'Asia/Ho_Chi_Minh';
@@ -19,7 +19,6 @@ exports.createVnpayPayment = async (req, res) => {
         const orderId = moment(date).format('HHmmss');
         const amount = req.body.amount;
 
-        // Tạo giao dịch trong DB
         const userId = req.userData.userId;
         const wallet = await Wallet.findOne({ user: userId });
         if (!wallet) {
@@ -40,35 +39,24 @@ exports.createVnpayPayment = async (req, res) => {
         vnp_Params['vnp_CurrCode'] = 'VND';
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_Locale'] = 'vn';
-        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + orderId;
+        vnp_Params['vnp_OrderInfo'] = 'Nap tien vao vi GD ' + newTransaction._id.toString();
         vnp_Params['vnp_OrderType'] = 'other';
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_TxnRef'] = newTransaction._id.toString();
 
-        // --- BẮT ĐẦU LOGIC TẠO CHỮ KÝ MỚI, ĐÚNG CHUẨN ---
+        // SỬ DỤNG LẠI LOGIC sortObject CŨ ĐÃ HOẠT ĐỘNG
+        vnp_Params = sortObject(vnp_Params);
 
-        // 1. Sắp xếp các key
-        const sortedKeys = Object.keys(vnp_Params).sort();
+        const signData = querystring.stringify(vnp_Params, { encode: false });
 
-        // 2. Tạo chuỗi signData thủ công
-        let signData = "";
-        for (const key of sortedKeys) {
-            if (vnp_Params[key] !== '' && vnp_Params[key] !== undefined && vnp_Params[key] !== null) {
-                // Nối key=value&
-                signData += (signData.length === 0 ? '' : '&') + key + '=' + vnp_Params[key];
-            }
-        }
-
-        // 3. Tạo chữ ký
         const hmac = crypto.createHmac("sha512", secretKey);
-        const vnp_SecureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
-        // 4. Thêm chữ ký vào cuối chuỗi query string
-        const queryString = querystring.stringify(vnp_Params, { encode: true });
-        const finalUrl = vnpUrl + '?' + queryString + '&vnp_SecureHash=' + vnp_SecureHash;
-        // --- KẾT THÚC LOGIC MỚI ---
+        vnp_Params['vnp_SecureHash'] = signed;
 
-        res.status(200).json({ paymentUrl: finalUrl });
+        vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
+
+        res.status(200).json({ paymentUrl: vnpUrl });
 
     } catch (error) {
         console.error("Lỗi khi tạo thanh toán VNPay:", error);
@@ -77,7 +65,7 @@ exports.createVnpayPayment = async (req, res) => {
 };
 
 
-// --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY ---
+// --- HÀM XỬ LÝ KẾT QUẢ TRẢ VỀ TỪ VNPAY (ĐÃ SỬA LỖI hasOwnProperty) ---
 exports.handleVnpayReturn = async (req, res) => {
     try {
         let vnp_Params = req.query;
@@ -87,18 +75,11 @@ exports.handleVnpayReturn = async (req, res) => {
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        // Sắp xếp lại
-        const sortedKeys = Object.keys(vnp_Params).sort();
-
-        // Tạo lại signData để kiểm tra
-        let signData = "";
-        for (const key of sortedKeys) {
-            if (vnp_Params[key] !== '' && vnp_Params[key] !== undefined && vnp_Params[key] !== null) {
-                signData += (signData.length === 0 ? '' : '&') + key + '=' + vnp_Params[key];
-            }
-        }
+        // SỬ DỤNG HÀM sortObject ĐÃ HOẠT ĐỘNG
+        vnp_Params = sortObject(vnp_Params);
 
         const secretKey = process.env.VNPAY_HASH_SECRET;
+        const signData = querystring.stringify(vnp_Params, { encode: false });
         const hmac = crypto.createHmac("sha512", secretKey);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
 
@@ -119,6 +100,10 @@ exports.handleVnpayReturn = async (req, res) => {
                 return res.send("<h1>Thanh toán thất bại!</h1>");
             }
         } else {
+            // Thêm log để debug chữ ký không khớp
+            console.log('Chữ ký không hợp lệ!');
+            console.log('Received Hash:', secureHash);
+            console.log('Generated Hash:', signed);
             return res.send("<h1>Chữ ký không hợp lệ!</h1>");
         }
     } catch (error) {
@@ -126,4 +111,20 @@ exports.handleVnpayReturn = async (req, res) => {
         return res.status(500).send("<h1>Đã có lỗi xảy ra</h1>");
     }
 };
-//trơif ơi chạy được đi mà
+
+// HÀM sortObject NGUYÊN BẢN TỪ CODE DEMO (Đã hoạt động trước đó)
+function sortObject(obj) {
+	let sorted = {};
+	let str = [];
+	let key;
+	for (key in obj){
+		if (obj.hasOwnProperty(key)) {
+		str.push(encodeURIComponent(key));
+		}
+	}
+	str.sort();
+    for (key = 0; key < str.length; key++) {
+        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+    }
+    return sorted;
+}
