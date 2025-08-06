@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:provider/provider.dart';
+import 'package:flutter_dapm/shared/provider/cart_provider.dart';
 
 // SỬA LỖI 1: Tên class nên theo quy ước UpperCamelCase
 class DetailsScreen extends StatefulWidget {
@@ -153,7 +154,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
                       onPressed: () {
-                        // TODO: xử lý thêm vào giỏ hàng
+                        // Lấy ID của sản phẩm (bạn cần truyền nó vào màn hình này)
+                        final productId = "some_product_id"; // <-- Thay bằng ID thật
+                        Provider.of<CartProvider>(context, listen: false).addItemToCart(productId, quantity: quantity);
+
+                        // Hiển thị thông báo
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã thêm vào giỏ hàng!'), duration: Duration(seconds: 1)),
+                        );
                       },
                       icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
                       label: const Text(

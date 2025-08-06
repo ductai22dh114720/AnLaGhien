@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_dapm/features/authentication/screen/splash_screen.dart';
-
+import 'package:flutter_dapm/shared/provider/cart_provider.dart';
 // KHÔNG cần async và GetStorage.init() nữa
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        // Thêm các provider khác ở đây nếu cần
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

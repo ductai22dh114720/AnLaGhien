@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dapm/features/authentication/screen/signup_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/dashboard_screen.dart';
-import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_dapm/features/authentication/screen/signup_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/dashboard_screen.dart';
+import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
+import 'package:flutter_dapm/shared/constants/api_config.dart';
+import 'package:flutter_dapm/shared/provider/cart_provider.dart';
+
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -97,6 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
     await _storage.write(key: 'jwt_token', value: token);
     await _box.write('user_name', userName);
     if (mounted) {
+      // Tải giỏ hàng trước khi vào trang chủ
+      await Provider.of<CartProvider>(context, listen: false).fetchCart();
       Navigator.of(context).pushReplacement(
         CustomPageRoute(child: const DashboardScreen(), type: PageTransitionType.scale),
       );

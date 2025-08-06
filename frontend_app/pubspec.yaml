@@ -17,11 +17,10 @@ dependencies:
   dio: ^5.8.0+1
   equatable: ^2.0.5
   flutter_secure_storage: ^9.0.0
-#  google_maps_flutter: ^2.6.1 # Gói để hiển thị bản đồ
-#  google_maps_apis: ^3.0.1
   flutter_map: ^6.1.0 # Để hiển thị bản đồ OSM
   latlong2: ^0.9.0
-  webview_flutter: ^4.7.0 # Hoặc phiên bản mới nhất# Cung cấp đối tượng LatLng cho flutter_map
+  webview_flutter: ^4.7.0
+  provider: ^6.1.1
 
 dev_dependencies:
   flutter_test:

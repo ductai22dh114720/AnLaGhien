@@ -6,6 +6,7 @@ import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:flutter_dapm/shared/theme/app_styles.dart';
+import 'package:flutter_dapm/shared/widgets/app_bar_cart_icon.dart';
 
 // Dữ liệu mẫu cho slider
 final List<Map<String, String>> popularProducts = [
@@ -52,6 +53,10 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.deepOrange,
         title: Text('TRANG CHỦ'),
         centerTitle: true,
+        actions: const [
+          AppBarCartIcon(),
+          SizedBox(width: 10), // Thêm chút khoảng cách
+        ],
       ),
       drawer: Drawer(
         child: Container(
