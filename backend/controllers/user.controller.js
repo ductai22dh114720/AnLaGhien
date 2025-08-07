@@ -1,4 +1,4 @@
-// File: backend/controllers/user.controller.js
+
 const User = require('../models/user.model');
 const cloudinary = require('../config/cloudinary.config');
 
