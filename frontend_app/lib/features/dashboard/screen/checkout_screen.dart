@@ -82,8 +82,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         content: const Text("Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý."),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).popUntil((route) => route.isFirst),
-            child: const Text("Về trang chủ"),
+            onPressed: () {
+              // Đóng dialog trước
+              Navigator.of(dialogContext).pop();
+
+              // SAU ĐÓ, đóng CheckoutScreen và trả về một giá trị để báo hiệu thành công
+              // Giá trị 'true' này sẽ được OrderScreen nhận
+              Navigator.of(context).pop(true); // <<-- THAY ĐỔI QUAN TRỌNG
+            },
+            child: const Text("OK"),
           )
         ],
       ),

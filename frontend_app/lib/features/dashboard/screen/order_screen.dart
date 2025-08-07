@@ -14,6 +14,12 @@ class _OrderScreenState extends State<OrderScreen> {
   final OrderService _orderService = OrderService();
   late Future<List<OrderModel>> _ordersFuture;
 
+  Future<void> _refreshOrders() async {
+    // Gán lại future, điều này sẽ trigger FutureBuilder build lại
+    setState(() {
+      _ordersFuture = _orderService.getOrderHistory();
+    });
+  }
   @override
   void initState() {
     super.initState();
@@ -25,6 +31,13 @@ class _OrderScreenState extends State<OrderScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Lịch sử Đơn hàng"),
+        actions: [
+          // Thêm nút refresh
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshOrders,
+          ),
+        ],
         backgroundColor: Colors.deepOrange,
         foregroundColor: Colors.white,
       ),
@@ -57,13 +70,16 @@ class _OrderScreenState extends State<OrderScreen> {
 
           // Trạng thái có dữ liệu, hiển thị danh sách
           final orders = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.all(8.0),
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              return _buildOrderCard(order);
-            },
+          return RefreshIndicator(
+            onRefresh: _refreshOrders, // Gọi hàm refresh khi kéo xuống
+            child: ListView.builder(
+              padding: const EdgeInsets.all(8.0),
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return _buildOrderCard(order);
+              },
+            ),
           );
         },
       ),

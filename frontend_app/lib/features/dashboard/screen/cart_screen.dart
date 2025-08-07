@@ -162,9 +162,27 @@ class CartScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                // Điều hướng đến CheckoutScreen
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const CheckoutScreen()));
+              // SỬA HÀM onPressed NÀY
+              onPressed: () async { // Chuyển thành hàm async
+                // Điều hướng đến CheckoutScreen và chờ kết quả trả về
+                final result = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (context) => const CheckoutScreen(),
+                  ),
+                );
+
+                // Sau khi CheckoutScreen đóng lại, nếu kết quả là true (đặt hàng thành công),
+                // chúng ta không cần làm gì cả. `CartProvider` đã bị thay đổi (giỏ hàng đã được xóa),
+                // và `Consumer` sẽ tự động build lại widget, hiển thị giỏ hàng trống.
+                // Nếu bạn muốn thực hiện thêm hành động, ví dụ chuyển tab, thì làm ở đây.
+                if (result == true) {
+                  // Ví dụ: Hiển thị một SnackBar
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cảm ơn bạn đã đặt hàng!'), backgroundColor: Colors.green),
+                    );
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepOrange,

@@ -2,65 +2,82 @@
 
 const Order = require('../models/order.model');
 const Cart = require('../models/cart.model');
-
+const Wallet = require('../models/wallet.model');
+const mongoose = require('mongoose');
 // Hàm tạo một đơn hàng mới từ giỏ hàng của người dùng
 exports.createOrder = async (req, res) => {
+  // BẮT ĐẦU MỘT SESSION GIAO DỊCH
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const userId = req.userData.userId; // Lấy từ authMiddleware
-    // SỬA LẠI: Tên biến phải khớp với những gì frontend gửi: address và paymentMethod
+    const userId = req.userData.userId;
     const { address, paymentMethod } = req.body;
 
-    // 1. Tìm giỏ hàng của người dùng và populate thông tin sản phẩm
-    const cart = await Cart.findOne({ user: userId }).populate('items.menuItem');
+    // 1. Tìm giỏ hàng (trong session)
+    const cart = await Cart.findOne({ user: userId }).session(session).populate('items.menuItem');
     if (!cart || cart.items.length === 0) {
+      await session.abortTransaction(); // Hủy giao dịch
       return res.status(400).json({ message: 'Giỏ hàng của bạn đang trống.' });
     }
 
-    // 2. Tính tổng tiền từ giỏ hàng một cách an toàn ở backend
+    // 2. Tính tổng tiền (trong session)
     const totalPrice = cart.items.reduce((sum, item) => {
-      // Đảm bảo item.menuItem không null
       if (item.menuItem && typeof item.menuItem.price === 'number') {
         return sum + item.quantity * item.menuItem.price;
       }
       return sum;
     }, 0);
 
-    // 3. Tạo một đối tượng đơn hàng mới với ĐẦY ĐỦ CÁC TRƯỜNG YÊU CẦU
-    const newOrder = new Order({
-      // SỬA LẠI: Tên trường trong model là 'customer', không phải 'user'
-      customer: userId,
+    // 3. XỬ LÝ THANH TOÁN BẰNG VÍ
+    if (paymentMethod === 'wallet') {
+      const wallet = await Wallet.findOne({ user: userId }).session(session);
+      if (!wallet || wallet.balance < totalPrice) {
+        await session.abortTransaction(); // Hủy giao dịch
+        return res.status(400).json({ message: 'Số dư ví không đủ để thanh toán.' });
+      }
+      // Trừ tiền trong ví
+      wallet.balance -= totalPrice;
+      await wallet.save({ session }); // Lưu lại thay đổi trong session
+    }
 
-      // SỬA LẠI: Map lại items để có đầy đủ các trường yêu cầu, đặc biệt là 'priceAtOrder'
+    // 4. Tạo đơn hàng mới (trong session)
+    const newOrder = new Order({
+      customer: userId,
       items: cart.items.map(item => ({
         menuItem: item.menuItem._id,
         quantity: item.quantity,
-        priceAtOrder: item.menuItem.price, // <<-- THÊM TRƯỜNG NÀY
+        priceAtOrder: item.menuItem.price,
       })),
-
-      // SỬA LẠI: Cung cấp các trường còn thiếu
       totalAmount: totalPrice,
       deliveryAddress: address,
       paymentMethod: paymentMethod,
       status: 'pending',
     });
 
-    // 4. Lưu đơn hàng vào database
-    await newOrder.save();
+    // Mongoose sẽ tự động thêm `newOrder` vào session khi tạo
+    await newOrder.save({ session });
 
-    // 5. Xóa giỏ hàng sau khi đã đặt hàng thành công
+    // 5. Xóa giỏ hàng (trong session)
     cart.items = [];
-    await cart.save();
+    await cart.save({ session });
 
-    // 6. Trả về thông tin đơn hàng đã tạo
+    // 6. COMMIT GIAO DỊCH - Tất cả thay đổi sẽ được áp dụng cùng lúc
+    await session.commitTransaction();
+
     res.status(201).json({ message: 'Đặt hàng thành công!', order: newOrder });
 
   } catch (error) {
-    // Log lỗi validation chi tiết hơn
-    console.error("Lỗi khi tạo đơn hàng:", error);
+    // Nếu có bất kỳ lỗi nào, HỦY TẤT CẢ THAY ĐỔI
+    await session.abortTransaction();
+    console.error("Lỗi khi tạo đơn hàng (transaction):", error);
     res.status(500).json({
-        message: 'Lỗi validation khi tạo đơn hàng.',
-        error: error.message // Gửi thông điệp lỗi cụ thể
+        message: 'Lỗi server khi tạo đơn hàng.',
+        error: error.message
     });
+  } finally {
+    // Kết thúc session
+    session.endSession();
   }
 };
 exports.getOrderHistory = async (req, res) => {
