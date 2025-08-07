@@ -1,4 +1,5 @@
 const MenuItem = require('../models/menuItem.model');
+const Restaurant = require('../models/restaurant.model');
 
 // Lấy tất cả các món ăn (có thể thêm phân trang sau)
 exports.getAllMenuItems = async (req, res) => {
@@ -13,7 +14,7 @@ exports.addMenuItem = async (req, res) => {
     try {
         const { name, description, price, imageUrl, restaurantId, isAvailable } = req.body;
 
-        // Kiểm tra xem nhà hàng có tồn tại không
+        // Dòng này bây giờ sẽ hợp lệ
         const restaurantExists = await Restaurant.findById(restaurantId);
         if (!restaurantExists) {
             return res.status(404).json({ message: "Không tìm thấy nhà hàng." });

@@ -1,8 +1,11 @@
 // Chọn database để làm việc
 use("test");
 
-// Chạy lệnh xóa
-db.transactions.deleteMany({ status: "pending" });
-
-// Để xem kết quả trước khi xóa, hãy chạy lệnh find trước
-db.transactions.find({ status: "pending" });
+db.restaurants.insertOne({
+  name: "Quán Burger Số 1",
+  address: "456 Đường XYZ, Quận 1, TPHCM",
+  cuisineType: "Đồ ăn nhanh",
+  contactNumber: "0909123456",
+  createdAt: new Date(), // Thêm ngày tạo cho nhất quán
+  updatedAt: new Date(),
+});
