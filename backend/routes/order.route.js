@@ -8,9 +8,9 @@ const authMiddleware = require('../middleware/auth.middleware'); // Giả sử b
 // Định nghĩa route để tạo đơn hàng mới
 // POST /api/orders/
 router.post('/', authMiddleware, orderController.createOrder);
-
 router.get('/', authMiddleware, orderController.getOrderHistory);
 
+router.get('/:id', authMiddleware, orderController.getOrderDetail);
 
 
 module.exports = router;

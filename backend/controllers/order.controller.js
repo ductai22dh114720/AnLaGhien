@@ -95,3 +95,25 @@ exports.getOrderHistory = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi lấy lịch sử đơn hàng.' });
   }
 };
+exports.getOrderDetail = async (req, res) => {
+  try {
+    const userId = req.userData.userId;
+    const orderId = req.params.id; // Lấy ID từ URL (ví dụ: /api/orders/12345)
+
+    const order = await Order.findOne({ _id: orderId, customer: userId })
+      .populate('items.menuItem', 'name imageUrl price') // Lấy đầy đủ thông tin sản phẩm
+      .populate('customer', 'name email'); // Lấy thông tin khách hàng
+
+    if (!order) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    }
+
+    res.status(200).json(order);
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết đơn hàng:", error);
+    if (error.kind === 'ObjectId') {
+        return res.status(400).json({ message: 'ID đơn hàng không hợp lệ.' });
+    }
+    res.status(500).json({ message: 'Lỗi server khi lấy chi tiết đơn hàng.' });
+  }
+};
