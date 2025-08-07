@@ -9,3 +9,31 @@ exports.getAllMenuItems = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi lấy danh sách món ăn." });
     }
 };
+exports.addMenuItem = async (req, res) => {
+    try {
+        const { name, description, price, imageUrl, restaurantId, isAvailable } = req.body;
+
+        // Kiểm tra xem nhà hàng có tồn tại không
+        const restaurantExists = await Restaurant.findById(restaurantId);
+        if (!restaurantExists) {
+            return res.status(404).json({ message: "Không tìm thấy nhà hàng." });
+        }
+
+        const newMenuItem = new MenuItem({
+            name,
+            description,
+            price,
+            imageUrl,
+            restaurant: restaurantId,
+            isAvailable
+        });
+
+        const savedItem = await newMenuItem.save();
+
+        res.status(201).json(savedItem);
+
+    } catch (error) {
+        console.error("Lỗi khi thêm món ăn:", error);
+        res.status(500).json({ message: "Không thể thêm món ăn mới." });
+    }
+};
