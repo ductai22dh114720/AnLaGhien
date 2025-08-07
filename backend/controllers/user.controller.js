@@ -79,3 +79,39 @@ exports.updateAvatar = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server khi upload ảnh.' });
     }
 };
+
+// [ADMIN] Lấy danh sách tất cả người dùng
+exports.getAllUsers = async (req, res) => {
+    try {
+        // Lấy tất cả user, không trả về mật khẩu, sắp xếp theo ngày tạo
+        const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách người dùng.', error: error.message });
+    }
+};
+
+// [ADMIN] Cập nhật quyền của một người dùng
+exports.updateUserRole = async (req, res) => {
+    try {
+        const { id } = req.params; // ID của người dùng cần cập nhật
+        const { role } = req.body; // Quyền mới ('customer', 'admin', 'delivery')
+
+        // Kiểm tra xem role có hợp lệ không
+        const allowedRoles = ['customer', 'admin', 'delivery'];
+        if (!role || !allowedRoles.includes(role)) {
+            return res.status(400).json({ message: 'Quyền không hợp lệ.' });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(id, { role: role }, { new: true }).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+        }
+
+        res.status(200).json({ message: 'Cập nhật quyền thành công!', user: updatedUser });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi cập nhật quyền.', error: error.message });
+    }
+};

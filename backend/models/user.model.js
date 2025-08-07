@@ -38,7 +38,7 @@ const UserSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['customer', 'delivery_personnel', 'admin'],
+        enum: ['customer', 'delivery', 'admin'],
         default: 'customer'
     },
     // Các trường dành riêng cho người giao hàng

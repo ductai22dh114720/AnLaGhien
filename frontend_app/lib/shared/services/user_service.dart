@@ -26,7 +26,7 @@ class UserService {
 
   Future<UserModel?> uploadAvatar(File imageFile) async {
     try {
-      const String url = '${ApiConfig.baseUrl}/users/avatar';
+      const String url = '${ApiConfig.baseUrl}/user/avatar';
 
       // Tạo FormData để gửi file
       String fileName = imageFile.path.split('/').last;
