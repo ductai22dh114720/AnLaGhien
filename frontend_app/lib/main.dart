@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dapm/features/authentication/screen/splash_screen.dart';
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
+import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
+
 // KHÔNG cần async và GetStorage.init() nữa
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => WalletProvider()),
         // Thêm các provider khác ở đây nếu cần
       ],
       child: const MyApp(),

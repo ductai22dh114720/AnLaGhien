@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/shared/models/user_model.dart';
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
+import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
 import 'package:flutter_dapm/shared/services/order_service.dart';
 import 'package:flutter_dapm/shared/services/user_service.dart';
 import 'package:provider/provider.dart';
@@ -64,6 +65,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       setState(() => _isProcessing = false);
       if (success) {
         await cartProvider.clearCart();
+        await Provider.of<WalletProvider>(context, listen: false).fetchWallet();
         _showOrderSuccessDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

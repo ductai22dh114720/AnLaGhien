@@ -9,6 +9,7 @@ import 'package:flutter_dapm/features/dashboard/screen/dashboard_screen.dart';
 import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
+import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
 
 
 
@@ -103,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       // Tải giỏ hàng trước khi vào trang chủ
       await Provider.of<CartProvider>(context, listen: false).fetchCart();
+      await Provider.of<WalletProvider>(context, listen: false).fetchWallet();
       Navigator.of(context).pushReplacement(
         CustomPageRoute(child: const DashboardScreen(), type: PageTransitionType.scale),
       );

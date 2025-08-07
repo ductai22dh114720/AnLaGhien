@@ -7,6 +7,9 @@ import 'package:flutter_dapm/shared/models/menu_item_model.dart';
 import 'package:flutter_dapm/shared/services/product_service.dart';
 import 'package:flutter_dapm/shared/theme/app_styles.dart';
 import 'package:flutter_dapm/shared/widgets/app_bar_cart_icon.dart';
+import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -100,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer() {
+    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+
     return Drawer(
       child: Container(
         color: Colors.deepOrange[100],
@@ -110,6 +115,35 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(color: Colors.deepOrange),
               child: Center(child: Text('L O G O', style: TextStyle(color: Colors.white, fontSize: 24))),
             ),
+            // --- THÊM PHẦN HIỂN THỊ SỐ DƯ VÍ ---
+            Consumer<WalletProvider>(
+              builder: (context, walletProvider, child) {
+                // Lấy số dư, nếu null thì mặc định là 0
+                final balance = walletProvider.balance ?? 0.0;
+                return ListTile(
+                  leading: const Icon(Icons.account_balance_wallet_outlined, color: Colors.deepOrange),
+                  title: const Text('Số dư ví', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    currencyFormatter.format(balance),
+                    style: const TextStyle(fontSize: 16, color: Colors.green, fontWeight: FontWeight.bold),
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(
+                      Icons.refresh,
+                      color: walletProvider.isLoading ? Colors.grey : Colors.blue,
+                    ),
+                    // Vô hiệu hóa nút khi đang tải
+                    onPressed: walletProvider.isLoading
+                        ? null
+                        : () {
+                      // Gọi hàm fetchWallet để cập nhật lại số dư
+                      Provider.of<WalletProvider>(context, listen: false).fetchWallet();
+                    },
+                  ),
+                );
+              },
+            ),
+            const Divider(), // Thêm đường kẻ ngang cho đẹp
             ListTile(leading: const Icon(Icons.home), title: const Text('Trang Chủ'), onTap: () => Navigator.pop(context)),
             ListTile(leading: const Icon(Icons.person), title: const Text('Trang Cá Nhân'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen())); }),
             ListTile(leading: const Icon(Icons.shopping_cart), title: const Text('Đơn hàng'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const OrderScreen())); }),
