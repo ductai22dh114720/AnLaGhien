@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
 const authMiddleware = require('../middleware/auth.middleware');
+const uploadMiddleware = require('../middleware/upload.middleware');
 
 // GET /api/user/profile - Lấy thông tin cá nhân
 // authMiddleware sẽ chạy trước, nếu token hợp lệ mới đến userController.getUserProfile
