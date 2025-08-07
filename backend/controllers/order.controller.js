@@ -117,3 +117,43 @@ exports.getOrderDetail = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi lấy chi tiết đơn hàng.' });
   }
 };
+// --- CÁC HÀM CÒN THIẾU DÀNH CHO ADMIN ---
+
+// [ADMIN] Lấy tất cả đơn hàng của tất cả người dùng
+exports.getAllOrders = async (req, res) => {
+    try {
+        const orders = await Order.find({})
+            .sort({ createdAt: -1 })
+            .populate('customer', 'name email') // Lấy thông tin khách hàng
+            .populate('items.menuItem', 'name'); // Lấy tên sản phẩm
+
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error("Lỗi khi lấy tất cả đơn hàng:", error);
+        res.status(500).json({ message: 'Lỗi server khi lấy tất cả đơn hàng.' });
+    }
+};
+
+// [ADMIN] Cập nhật trạng thái của một đơn hàng
+exports.updateOrderStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        // Kiểm tra xem status có hợp lệ không (dựa trên enum trong model)
+        const allowedStatus = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'];
+        if (!status || !allowedStatus.includes(status)) {
+            return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
+        }
+
+        const updatedOrder = await Order.findByIdAndUpdate(id, { status: status }, { new: true });
+
+        if (!updatedOrder) {
+            return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+        }
+        res.status(200).json({ message: 'Cập nhật trạng thái thành công!', order: updatedOrder });
+    } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái đơn hàng:", error);
+        res.status(500).json({ message: 'Lỗi server khi cập nhật trạng thái.' });
+    }
+};
