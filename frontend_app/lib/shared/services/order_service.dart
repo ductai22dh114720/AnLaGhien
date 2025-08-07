@@ -100,4 +100,33 @@ class OrderService {
       return null;
     }
   }
+  // [ADMIN] Lấy TẤT CẢ đơn hàng
+  Future<List<OrderModel>> getAllOrders() async {
+    try {
+      // Backend cần có endpoint này, ví dụ: /api/orders/all
+      const url = '${ApiConfig.baseUrl}/orders/all';
+      final response = await _dio.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => OrderModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Lỗi khi lấy toàn bộ đơn hàng: $e");
+      return [];
+    }
+  }
+
+  // [ADMIN] Cập nhật trạng thái đơn hàng
+  Future<bool> updateOrderStatus(String orderId, String status) async {
+    try {
+      // Backend cần có endpoint này, ví dụ: /api/orders/:id/status
+      final url = '${ApiConfig.baseUrl}/orders/$orderId/status';
+      final response = await _dio.put(url, data: {'status': status});
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Lỗi khi cập nhật trạng thái đơn hàng: $e");
+      return false;
+    }
+  }
 }

@@ -1,8 +1,10 @@
 // lib/features/dashboard/screen/admin_dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/dashboard/screen/admin_user_management_screen.dart';
-// import các màn hình quản lý khác sau này
-// import 'package:flutter_dapm/features/dashboard/screen/admin_menu_management_screen.dart';
+// Sửa lại import
+import 'package:flutter_dapm/features/dashboard/screen/admin_menu_management_screen.dart';
+// THÊM IMPORT MỚI
+import 'package:flutter_dapm/features/dashboard/screen/admin_order_management_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -12,7 +14,7 @@ class AdminDashboardScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Admin Dashboard"),
-        backgroundColor: Colors.indigo, // Dùng màu khác để phân biệt
+        backgroundColor: Colors.indigo,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -24,7 +26,7 @@ class AdminDashboardScreen extends StatelessWidget {
       ),
       body: GridView.count(
         padding: const EdgeInsets.all(16.0),
-        crossAxisCount: 2, // 2 cột
+        crossAxisCount: 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
         children: <Widget>[
@@ -43,7 +45,9 @@ class AdminDashboardScreen extends StatelessWidget {
             icon: Icons.restaurant_menu_outlined,
             label: "Quản lý Món ăn",
             onTap: () {
-              // TODO: Điều hướng đến AdminMenuManagementScreen
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const AdminMenuManagementScreen()),
+              );
             },
           ),
           _buildDashboardCard(
@@ -51,15 +55,18 @@ class AdminDashboardScreen extends StatelessWidget {
             icon: Icons.receipt_long_outlined,
             label: "Quản lý Đơn hàng",
             onTap: () {
-              // TODO: Điều hướng đến AdminOrderManagementScreen
+              // SỬA LẠI: Điều hướng đến màn hình mới
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const AdminOrderManagementScreen()),
+              );
             },
           ),
           _buildDashboardCard(
             context,
-            icon: Icons.bar_chart_outlined,
-            label: "Thống kê",
+            icon: Icons.bar_chart_outlined, // SỬA LẠI: Dùng icon khác
+            label: "Thống kê", // SỬA LẠI: Dùng label khác
             onTap: () {
-              // TODO: Điều hướng đến StatisticsScreen
+              // TODO: Điều hướng đến trang thống kê
             },
           ),
         ],
