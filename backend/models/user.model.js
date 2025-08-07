@@ -55,7 +55,6 @@ const UserSchema = new Schema({
         type: String,
         default: ''
     }
-// Dấu ngoặc đóng của schema phải ở đây, chỉ có một khối timestamps
 }, {
     timestamps: true
 });

@@ -11,5 +11,6 @@ router.get('/profile', authMiddleware, userController.getUserProfile);
 // PUT /api/user/profile - Cập nhật thông tin cá nhân
 router.put('/profile', authMiddleware, userController.updateUserProfile);
 
+router.post('/avatar', authMiddleware, uploadMiddleware.single('avatar'), userController.updateAvatar);
 
 module.exports = router;

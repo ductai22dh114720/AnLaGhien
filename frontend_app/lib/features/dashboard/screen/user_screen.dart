@@ -1,10 +1,12 @@
-// File: lib/features/dashboard/screens/user_screen.dart
-
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
-
+import 'package:flutter_dapm/shared/models/address_suggestion_model.dart';
 import 'package:flutter_dapm/shared/models/user_model.dart';
+import 'package:flutter_dapm/shared/services/address_service.dart';
 import 'package:flutter_dapm/shared/services/user_service.dart';
 
 class UserScreen extends StatefulWidget {
@@ -18,46 +20,44 @@ class UserScreen extends StatefulWidget {
 class _UserScreenState extends State<UserScreen> {
   final _formKey = GlobalKey<FormState>();
   final _userService = UserService();
+  final _addressService = AddressService();
 
-  // Controllers cho các TextField
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
 
-  // Trạng thái UI
   bool _isEditing = false;
   bool _isLoading = false;
 
-  // Trạng thái bản đồ
   final MapController _mapController = MapController();
-  final LatLng _initialPosition = const LatLng(10.7769, 106.7009); // Mặc định ở TPHCM
+  LatLng _currentPosition = const LatLng(10.7769, 106.7009);
   List<Marker> _markers = [];
+
+  List<AddressSuggestion> _placeSuggestions = [];
+  Timer? _debounce;
+  bool _isSearchingAddress = false;
 
   @override
   void initState() {
     super.initState();
-    // Khởi tạo controller với dữ liệu ban đầu
     _nameController = TextEditingController(text: widget.user.name);
     _emailController = TextEditingController(text: widget.user.email);
-    _phoneController = TextEditingController(text: widget.user.phone);
-    _addressController = TextEditingController(text: widget.user.address);
+    _phoneController = TextEditingController(text: widget.user.phone ?? '');
+    _addressController = TextEditingController(text: widget.user.address ?? '');
 
-    // TODO: Sau này, chuyển đổi widget.user.address thành tọa độ và gán vào _initialPosition
-
-    // Thêm marker ban đầu
-    _markers.add(
-      Marker(
-        point: _initialPosition,
-        width: 80.0,
-        height: 80.0,
-        child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
-      ),
-    );
+    final initialAddress = widget.user.address;
+    // Sửa lại kiểm tra null cho an toàn và clean
+    if (initialAddress != null && initialAddress.isNotEmpty) {
+      _geocodeAddress(initialAddress);
+    } else {
+      _updateMapMarker(_currentPosition);
+    }
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -65,8 +65,61 @@ class _UserScreenState extends State<UserScreen> {
     super.dispose();
   }
 
+  // --- LOGIC FUNCTIONS ---
+
+  void _onAddressChanged(String input) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 700), () async {
+      if (input.isNotEmpty) {
+        // Kiểm tra `mounted` trước khi setState
+        if (!mounted) return;
+        setState(() => _isSearchingAddress = true);
+
+        final suggestions = await _addressService.getAutocompleteSuggestions(input);
+
+        if (!mounted) return;
+        setState(() {
+          _placeSuggestions = suggestions;
+          _isSearchingAddress = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() => _placeSuggestions = []);
+      }
+    });
+  }
+
+  Future<void> _geocodeAddress(String address) async {
+    final coordinates = await _addressService.getCoordinatesFromAddress(address);
+    if (coordinates != null) {
+      _goToPosition(coordinates);
+    }
+  }
+
+  void _goToPosition(LatLng position) {
+    setState(() {
+      _currentPosition = position;
+    });
+    _mapController.move(position, 16.0);
+    _updateMapMarker(position);
+  }
+
+  void _updateMapMarker(LatLng position) {
+    setState(() {
+      _markers = [
+        Marker(
+          point: position,
+          width: 80.0,
+          height: 80.0,
+          child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+        ),
+      ];
+    });
+  }
+
   Future<void> _handleUpdateProfile() async {
-    if (_formKey.currentState?.validate() != true) return;
+    // Sửa lại kiểm tra validate cho clean
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isLoading = true);
 
@@ -78,34 +131,47 @@ class _UserScreenState extends State<UserScreen> {
 
     final success = await _userService.updateUserProfile(updatedData);
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cập nhật thông tin thành công!'), backgroundColor: Colors.green),
-        );
-        setState(() => _isEditing = false);
-        Navigator.of(context).pop(true); // Trả về true để màn hình trước biết cần tải lại
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cập nhật thất bại. Vui lòng thử lại.'), backgroundColor: Colors.red),
-        );
-      }
+    // Sửa lại để tuân thủ `use_build_context_synchronously`
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cập nhật thông tin thành công!'), backgroundColor: Colors.green),
+      );
+      setState(() => _isEditing = false);
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cập nhật thất bại. Vui lòng thử lại.'), backgroundColor: Colors.red),
+      );
     }
   }
 
-  void _goToPosition(LatLng position) {
-    _mapController.move(position, 16.0);
-    setState(() {
-      _markers = [
-        Marker(
-          point: position,
-          width: 80.0,
-          height: 80.0,
-          child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
-        ),
-      ];
-    });
+  Future<void> _pickAndUploadImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) return; // Nếu người dùng không chọn ảnh
+
+    setState(() => _isLoading = true);
+    final File imageFile = File(image.path);
+    final updatedUser = await _userService.uploadAvatar(imageFile);
+
+    // Sửa lại để tuân thủ `use_build_context_synchronously`
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+    if (updatedUser != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cập nhật ảnh thành công!'), backgroundColor: Colors.green),
+      );
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cập nhật ảnh thất bại.'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
@@ -144,7 +210,6 @@ class _UserScreenState extends State<UserScreen> {
             key: _formKey,
             child: Column(
               children: [
-                // --- AVATAR ---
                 Stack(
                   children: [
                     CircleAvatar(
@@ -156,9 +221,8 @@ class _UserScreenState extends State<UserScreen> {
                         bottom: 0,
                         right: 0,
                         child: GestureDetector(
-                          onTap: () {
-                            // TODO: Mở thư viện ảnh để chọn ảnh mới
-                          },
+                          // SỬA LẠI: Gán hàm vào onTap
+                          onTap: _pickAndUploadImage,
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.deepOrange,
@@ -175,17 +239,24 @@ class _UserScreenState extends State<UserScreen> {
                   ],
                 ),
                 const SizedBox(height: 40),
-
-                // --- FORM THÔNG TIN ---
                 _buildUserInfoField(label: "Họ và tên", icon: Icons.person, controller: _nameController, isEditing: _isEditing),
                 const SizedBox(height: 20),
                 _buildUserInfoField(label: "Email", icon: Icons.email, controller: _emailController, isEditing: false),
                 const SizedBox(height: 20),
                 _buildUserInfoField(label: "Số điện thoại", icon: Icons.phone, controller: _phoneController, isEditing: _isEditing),
                 const SizedBox(height: 20),
-                _buildUserInfoField(label: "Địa chỉ", icon: Icons.location_on, controller: _addressController, isEditing: _isEditing, maxLines: 3),
-
-                // --- WIDGET BẢN ĐỒ ---
+                _buildUserInfoField(
+                  label: "Địa chỉ",
+                  icon: Icons.location_on,
+                  controller: _addressController,
+                  isEditing: _isEditing,
+                  maxLines: 3,
+                  onChanged: _isEditing ? _onAddressChanged : null,
+                ),
+                if (_isSearchingAddress)
+                  const Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Center(child: CircularProgressIndicator()))
+                else if (_placeSuggestions.isNotEmpty)
+                  _buildSuggestionsList(),
                 const SizedBox(height: 20),
                 SizedBox(
                   height: 250,
@@ -194,8 +265,8 @@ class _UserScreenState extends State<UserScreen> {
                     child: FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
-                        initialCenter: _initialPosition,
-                        initialZoom: 14.0,
+                        initialCenter: _currentPosition,
+                        initialZoom: 16.0,
                       ),
                       children: [
                         TileLayer(
@@ -215,6 +286,43 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
+  Widget _buildSuggestionsList() {
+    return Container(
+      height: 200,
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            // SỬA LẠI: theo gợi ý mới nhất
+            color: Colors.grey.withAlpha(51),
+            spreadRadius: 1,
+            blurRadius: 4,
+          )
+        ],
+      ),
+      child: ListView.builder(
+        itemCount: _placeSuggestions.length,
+        itemBuilder: (context, index) {
+          final suggestion = _placeSuggestions[index];
+          return ListTile(
+            leading: const Icon(Icons.location_pin, color: Colors.grey),
+            title: Text(suggestion.displayName),
+            onTap: () {
+              setState(() {
+                _addressController.text = suggestion.displayName;
+                _placeSuggestions = [];
+                _geocodeAddress(suggestion.displayName);
+              });
+              FocusScope.of(context).unfocus();
+            },
+          );
+        },
+      ),
+    );
+  }
+
   // Widget helper để tạo một trường thông tin
   Widget _buildUserInfoField({
     required String label,
@@ -222,11 +330,13 @@ class _UserScreenState extends State<UserScreen> {
     required TextEditingController controller,
     bool isEditing = false,
     int maxLines = 1,
+    void Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
       readOnly: !isEditing,
       maxLines: maxLines,
+      onChanged: onChanged,
       style: TextStyle(color: isEditing ? Colors.black : Colors.grey[700]),
       decoration: InputDecoration(
         labelText: label,

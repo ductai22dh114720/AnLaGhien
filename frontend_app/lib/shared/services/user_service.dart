@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:flutter_dapm/shared/models/user_model.dart';
@@ -23,6 +24,28 @@ class UserService {
     );
   }
 
+  Future<UserModel?> uploadAvatar(File imageFile) async {
+    try {
+      const String url = '${ApiConfig.baseUrl}/users/avatar';
+
+      // Tạo FormData để gửi file
+      String fileName = imageFile.path.split('/').last;
+      FormData formData = FormData.fromMap({
+        // 'avatar' phải khớp với tên trong upload.single('avatar') ở backend
+        "avatar": await MultipartFile.fromFile(imageFile.path, filename: fileName),
+      });
+
+      final response = await _dio.post(url, data: formData);
+
+      if (response.statusCode == 200) {
+        return UserModel.fromJson(response.data['user']);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Lỗi khi upload avatar: $e");
+      return null;
+    }
+  }
   Future<UserModel?> getUserProfile() async {
     try {
       const String url = '${ApiConfig.baseUrl}/user/profile';
