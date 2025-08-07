@@ -9,7 +9,7 @@ class OrderService {
   final _storage = const FlutterSecureStorage();
 
   OrderService() {
-    // Interceptor để tự động thêm token
+    // Interceptor để tự động thêm token vào mỗi request, code này rất tốt!
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read(key: 'jwt_token');
@@ -18,42 +18,52 @@ class OrderService {
         }
         return handler.next(options);
       },
+      onError: (e, handler) {
+        // In lỗi ra console để debug
+        debugPrint('Lỗi Dio: ${e.message}');
+        if (e.response != null) {
+          debugPrint('Data lỗi từ server: ${e.response?.data}');
+        }
+        return handler.next(e);
+      },
     ));
   }
 
   // Hàm tạo đơn hàng mới từ giỏ hàng
   Future<bool> createOrder({
-    required CartModel cart,
+    required CartModel cart, // Đổi tên model cho đúng
     required String deliveryAddress,
     required String paymentMethod,
-    String? notes,
+    String? notes, // Tham số này không bắt buộc
   }) async {
     try {
-      // Chuẩn bị dữ liệu `items` theo đúng định dạng mà backend yêu cầu
-      final itemsData = cart.items.map((item) => {
-        'menuItem': item.menuItem.id,
-        'quantity': item.quantity,
-        'priceAtOrder': item.menuItem.price,
-      }).toList();
+      // SỬA LẠI URL CHO ĐÚNG VỚI BACKEND
+      // Endpoint để tạo đơn hàng là '/orders' với phương thức POST
+      const url = '${ApiConfig.baseUrl}/orders';
 
+      // CHUẨN BỊ DỮ LIỆU GỬI ĐI
+      // Backend sẽ tự lấy thông tin giỏ hàng từ token của user
+      // Chúng ta chỉ cần gửi thông tin mà backend không có: địa chỉ và phương thức thanh toán
       final Map<String, dynamic> orderData = {
-        // Giả sử giỏ hàng chỉ có sản phẩm từ 1 nhà hàng
-        // Bạn cần thêm logic để lấy restaurantId này
-        'restaurantId': "RESTAURANT_ID_CUA_BAN", // <<-- THAY THẾ BẰNG ID NHÀ HÀNG THẬT
-        'items': itemsData,
-        'totalAmount': cart.totalPrice,
-        'deliveryAddress': deliveryAddress,
-        'paymentMethod': paymentMethod,
-        'notes': notes ?? '',
+        'address': deliveryAddress,
+        'paymentMethod': paymentMethod, // 'wallet' hoặc 'cod'
+        // 'notes': notes, // Nếu backend có hỗ trợ thì gửi
       };
 
-      const url = '${ApiConfig.baseUrl}/orders/create';
+      debugPrint("Gửi yêu cầu POST đến: $url");
+      debugPrint("Với dữ liệu: $orderData");
+
       final response = await _dio.post(url, data: orderData);
 
-      return response.statusCode == 201; // Trả về true nếu tạo thành công
+      // Khi tạo mới thành công, status code chuẩn là 201 (Created)
+      return response.statusCode == 201;
 
+    } on DioException catch (e) {
+      // Interceptor đã in lỗi, ở đây chỉ cần log thêm nếu cần
+      debugPrint("Lỗi DioException khi tạo đơn hàng trong OrderService: ${e.message}");
+      return false;
     } catch (e) {
-      debugPrint("Lỗi khi tạo đơn hàng: $e");
+      debugPrint("Lỗi không xác định khi tạo đơn hàng: $e");
       return false;
     }
   }

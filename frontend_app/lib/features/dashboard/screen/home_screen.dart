@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/authentication/screen/details_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/shared/models/menu_item_model.dart';
 import 'package:flutter_dapm/shared/services/product_service.dart';
 import 'package:flutter_dapm/shared/theme/app_styles.dart';
@@ -15,19 +15,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // --- BIẾN TRẠNG THÁI ---
-  bool burger = true, pizza = false, burrito = false, drink = false; // Mặc định chọn burger
+  bool burger = true, pizza = false, burrito = false, drink = false;
   late Future<List<MenuItemModel>> _menuItemsFuture;
   final ProductService _productService = ProductService();
 
-  // --- VÒNG ĐỜI WIDGET ---
   @override
   void initState() {
     super.initState();
     _menuItemsFuture = _productService.getAllMenuItems();
   }
 
-  // --- HÀM LOGIC ---
   void _navigateToDetails(MenuItemModel item) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -42,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- PHẦN BUILD UI ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
         actions: const [AppBarCartIcon(), SizedBox(width: 10)],
       ),
-      drawer: _buildDrawer(), // Gọi hàm helper
+      drawer: _buildDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 15.0),
@@ -62,17 +58,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text('Danh Mục', style: AppStyles.headlineTextFeildStyle()),
               const SizedBox(height: 20.0),
-              _buildCategorySelector(), // Gọi hàm helper
+              _buildCategorySelector(),
               const SizedBox(height: 30.0),
-              _buildProductSections(), // Tách ra widget riêng cho dễ đọc
+              _buildProductSections(),
             ],
           ),
         ),
       ),
     );
   }
-
-  // --- CÁC WIDGET HELPER (ĐÃ ĐƯA TRỞ LẠI VÀO TRONG CLASS) ---
 
   Widget _buildProductSections() {
     return FutureBuilder<List<MenuItemModel>>(
@@ -108,13 +102,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDrawer() {
     return Drawer(
       child: Container(
-        color: Colors.deepOrange[100], // Màu nền nhẹ nhàng hơn
+        color: Colors.deepOrange[100],
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.deepOrange),
-              child: const Center(child: Text('L O G O', style: TextStyle(color: Colors.white, fontSize: 24))),
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.deepOrange),
+              child: Center(child: Text('L O G O', style: TextStyle(color: Colors.white, fontSize: 24))),
             ),
             ListTile(leading: const Icon(Icons.home), title: const Text('Trang Chủ'), onTap: () => Navigator.pop(context)),
             ListTile(leading: const Icon(Icons.person), title: const Text('Trang Cá Nhân'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen())); }),
@@ -189,8 +183,24 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(15.0), child: Image.network(item.imageUrl ?? 'https://via.placeholder.com/150', fit: BoxFit.cover, width: double.infinity))),
-              const SizedBox(height: 10.0),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15.0),
+                  child: Image.network(
+                    item.imageUrl ?? 'https://via.placeholder.com/150', // Dùng placeholder URL để an toàn
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.fastfood_outlined, color: Colors.grey, size: 50);
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8.0),
               Text(item.name, style: AppStyles.boldTextFeildStyle(), maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 5.0),
               Text('${item.price.toStringAsFixed(0)}đ', style: AppStyles.boldTextFeildStyle()),
@@ -210,7 +220,29 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(15.0),
-              child: Image.network(item.imageUrl ?? 'https://via.placeholder.com/150', height: 120, width: 120, fit: BoxFit.cover),
+              // CẢI THIỆN: Thêm loadingBuilder và errorBuilder để trải nghiệm người dùng tốt hơn
+              child: Image.network(
+                item.imageUrl ?? 'https://via.placeholder.com/150',
+                height: 120,
+                width: 120,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 120,
+                    width: 120,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, color: Colors.grey),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const SizedBox(
+                    height: 120,
+                    width: 120,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                },
+              ),
             ),
             const SizedBox(width: 20.0),
             Expanded(

@@ -30,18 +30,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/logo_splash.png
-    - assets/burger.png
-    - assets/pizza.png
-    - assets/burrito.png
-    - assets/drink.png
-    - assets/burger_2gagion.jpg
-    - assets/burger_gagion.jpg
-    - assets/onboarding_1.png
-    - assets/onboarding_2.png
-    - assets/onboarding_3.png
-    - assets/google_logo.png
-    - assets/momo_logo.png
-    - assets/vnpay_logo.png
-    - assets/bank.png
+    - assets/
 
