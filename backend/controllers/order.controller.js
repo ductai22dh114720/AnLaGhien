@@ -38,12 +38,10 @@ exports.createOrder = async (req, res) => {
       })),
 
       // SỬA LẠI: Cung cấp các trường còn thiếu
-      totalAmount: totalPrice, // <<-- THÊM TRƯỜNG NÀY
-      deliveryAddress: address, // <<-- SỬA TÊN TRƯỜDNG CHO ĐÚNG
+      totalAmount: totalPrice,
+      deliveryAddress: address,
       paymentMethod: paymentMethod,
-
-      // SỬA LẠI: Viết hoa chữ 'P' trong 'Pending' để khớp với enum trong model (khả năng cao)
-      status: 'Pending',
+      status: 'pending',
     });
 
     // 4. Lưu đơn hàng vào database

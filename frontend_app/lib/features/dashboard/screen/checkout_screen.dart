@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dapm/models/user_model.dart';
+import 'package:flutter_dapm/shared/models/user_model.dart';
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
 import 'package:flutter_dapm/shared/services/order_service.dart';
 import 'package:flutter_dapm/shared/services/user_service.dart';
