@@ -63,3 +63,18 @@ exports.createOrder = async (req, res) => {
     });
   }
 };
+exports.getOrderHistory = async (req, res) => {
+  try {
+    const userId = req.userData.userId;
+
+    // Tìm tất cả đơn hàng của user, sắp xếp từ mới nhất đến cũ nhất
+    const orders = await Order.find({ customer: userId })
+      .sort({ createdAt: -1 }) // -1 để sắp xếp giảm dần (mới nhất trước)
+      .populate('items.menuItem', 'name imageUrl'); // Lấy thêm 'name' và 'imageUrl' của sản phẩm
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Lỗi khi lấy lịch sử đơn hàng:", error);
+    res.status(500).json({ message: 'Lỗi server khi lấy lịch sử đơn hàng.' });
+  }
+};

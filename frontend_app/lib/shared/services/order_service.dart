@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:flutter_dapm/shared/models/cart_model.dart';
+import 'package:flutter_dapm/shared/models/order_model.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class OrderService {
@@ -65,6 +66,22 @@ class OrderService {
     } catch (e) {
       debugPrint("Lỗi không xác định khi tạo đơn hàng: $e");
       return false;
+    }
+  }
+  Future<List<OrderModel>> getOrderHistory() async {
+    try {
+      const url = '${ApiConfig.baseUrl}/orders';
+      final response = await _dio.get(url);
+
+      if (response.statusCode == 200) {
+        // Chuyển đổi list JSON thành list OrderModel
+        final List<dynamic> orderData = response.data;
+        return orderData.map((json) => OrderModel.fromJson(json)).toList();
+      }
+      return []; // Trả về list rỗng nếu có lỗi không mong muốn
+    } catch (e) {
+      debugPrint("Lỗi khi lấy lịch sử đơn hàng: $e");
+      return []; // Trả về list rỗng khi có exception
     }
   }
 }
