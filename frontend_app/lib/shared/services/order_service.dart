@@ -84,4 +84,20 @@ class OrderService {
       return []; // Trả về list rỗng khi có exception
     }
   }
+  Future<OrderModel?> getOrderDetail(String orderId) async {
+    try {
+      // URL sẽ có dạng /api/orders/some_id_123
+      final url = '${ApiConfig.baseUrl}/orders/$orderId';
+      final response = await _dio.get(url);
+
+      if (response.statusCode == 200) {
+        // Dùng lại OrderModel đã tạo trước đó để parse dữ liệu
+        return OrderModel.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Lỗi khi lấy chi tiết đơn hàng: $e");
+      return null;
+    }
+  }
 }

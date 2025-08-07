@@ -1,12 +1,12 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dapm/shared/constants/api_config.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dapm/shared/models/transaction_model.dart';
 import 'package:flutter_dapm/shared/screens/webview_screen.dart';
-import 'package:flutter_dapm/shared/services/wallet_service.dart';
 import 'package:flutter_dapm/shared/services/payment_service.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -16,7 +16,6 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  final _walletService = WalletService();
   final _paymentService = PaymentService();
 
   late Future<Map<String, dynamic>?> _walletInfoFuture;
@@ -28,15 +27,13 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
-  }
-
-  // Hàm để tải cả thông tin ví và tên người dùng
-  void _loadInitialData() {
     _loadUserName();
-    _loadWalletInfo();
+    // Gọi fetchWallet ngay khi màn hình khởi tạo để đảm bảo có dữ liệu mới nhất
+    // listen: false vì chúng ta không cần rebuild initState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<WalletProvider>(context, listen: false).fetchWallet();
+    });
   }
-
   void _loadUserName() {
     final box = GetStorage();
     // Giả sử bạn đã lưu tên user vào GetStorage với key 'user_name' lúc đăng nhập
@@ -48,16 +45,73 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
-  void _loadWalletInfo() {
-    setState(() {
-      _walletInfoFuture = _walletService.getWalletInfo();
-    });
+  // Hàm refresh, chỉ cần gọi hàm của provider
+  Future<void> _refreshWallet() async {
+    await Provider.of<WalletProvider>(context, listen: false).fetchWallet();
   }
 
-  Future<void> _handleTopUpWithVnpay() async {
-    const int amount = 50000;
+  Future<void> _showTopUpDialog() async {
+    final amountController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
-    // Gọi hàm từ PaymentService
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Người dùng phải nhấn nút
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Nhập số tiền cần nạp'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              // Chỉ cho phép nhập số
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Số tiền (VND)',
+                hintText: 'Ví dụ: 50000',
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Vui lòng nhập số tiền';
+                }
+                final amount = int.tryParse(value);
+                // Giới hạn số tiền nạp tối thiểu
+                if (amount == null || amount < 10000) {
+                  return 'Số tiền phải lớn hơn 10,000đ';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Hủy'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Xác nhận'),
+              onPressed: () {
+                // Kiểm tra form hợp lệ
+                if (formKey.currentState!.validate()) {
+                  final amount = int.parse(amountController.text);
+                  // Đóng dialog trước
+                  Navigator.of(dialogContext).pop();
+                  // Sau đó gọi hàm xử lý thanh toán với số tiền đã nhập
+                  _handleTopUpWithVnpay(amount);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+  Future<void> _handleTopUpWithVnpay(int amount) async {
     final String? paymentUrl = await _paymentService.createVnpayPaymentUrl(amount);
 
     if (!mounted) return;
@@ -73,7 +127,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
       if (result == 'success') {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nạp tiền thành công!'), backgroundColor: Colors.green));
-        _loadWalletInfo();
+        _refreshWallet();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Giao dịch đã bị hủy hoặc thất bại.'), backgroundColor: Colors.orange));
       }
@@ -97,23 +151,32 @@ class _WalletScreenState extends State<WalletScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshWallet,
+          )
+        ],
       ),
-      body: FutureBuilder<Map<String, dynamic>?>(
-        future: _walletInfoFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      // SỬ DỤNG CONSUMER ĐỂ LẮNG NGHE WALLETPROVIDER
+      body: Consumer<WalletProvider>(
+        builder: (context, walletProvider, child) {
+          // Trạng thái đang tải
+          if (walletProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Text("Không thể tải dữ liệu ví."), ElevatedButton(onPressed: _loadWalletInfo, child: const Text("Thử lại"))]));
+
+          // Trạng thái không có dữ liệu (lỗi hoặc chưa đăng nhập)
+          if (walletProvider.balance == null || walletProvider.transactions == null) {
+            return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Text("Không thể tải dữ liệu ví."), ElevatedButton(onPressed: _refreshWallet, child: const Text("Thử lại"))]));
           }
 
-          final walletData = snapshot.data!;
-          final double balance = (walletData['balance'] as num).toDouble();
-          final List<TransactionModel> transactions = walletData['transactions'];
+          // Trạng thái có dữ liệu
+          final double balance = walletProvider.balance!;
+          final List<TransactionModel> transactions = walletProvider.transactions!;
 
           return RefreshIndicator(
-            onRefresh: () async => _loadWalletInfo(),
+            onRefresh: _refreshWallet,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Padding(
@@ -121,11 +184,11 @@ class _WalletScreenState extends State<WalletScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildBalanceCard(_userName, balance), // <-- Truyền tên và số dư thật
+                    _buildBalanceCard(_userName, balance),
                     const SizedBox(height: 30),
                     _buildTopUpSection(),
                     const SizedBox(height: 30),
-                    _buildTransactionHistory(transactions), // <-- Truyền danh sách giao dịch thật
+                    _buildTransactionHistory(transactions),
                   ],
                 ),
               ),
@@ -135,7 +198,6 @@ class _WalletScreenState extends State<WalletScreen> {
       ),
     );
   }
-
   // --- WIDGETS HELPER ---
 
   Widget _buildBalanceCard(String userName, double balance) {
@@ -180,7 +242,7 @@ class _WalletScreenState extends State<WalletScreen> {
             _buildPaymentMethodButton(
               'assets/vnpay_logo.png',
               'VNPay',
-              _handleTopUpWithVnpay,
+              _showTopUpDialog,
             ),
           ],
         ),

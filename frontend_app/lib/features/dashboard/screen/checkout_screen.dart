@@ -181,13 +181,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Card(
                       child: Column(
                         children: [
-                          RadioListTile<PaymentMethod>(
-                            title: const Text('Thanh toán bằng ví'),
-                            subtitle: const Text('Số dư: 50.000đ'),
-                            value: PaymentMethod.wallet,
-                            groupValue: _selectedMethod,
-                            onChanged: (value) => setState(() => _selectedMethod = value),
-                            activeColor: Colors.deepOrange,
+                          // Sử dụng Consumer để lắng nghe và cập nhật số dư từ WalletProvider
+                          Consumer<WalletProvider>(
+                            builder: (context, walletProvider, child) {
+                              // Lấy số dư từ provider, nếu null thì mặc định là 0
+                              final balance = walletProvider.balance ?? 0.0;
+                              return RadioListTile<PaymentMethod>(
+                                title: const Text('Thanh toán bằng ví'),
+                                subtitle: Text(
+                                  // Hiển thị số dư thật đã được định dạng
+                                  'Số dư: ${currencyFormatter.format(balance)}',
+                                  style: TextStyle(
+                                    color: Colors.green[700], // Cho màu xanh để dễ nhìn
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                value: PaymentMethod.wallet,
+                                groupValue: _selectedMethod,
+                                onChanged: (value) => setState(() => _selectedMethod = value),
+                                activeColor: Colors.deepOrange,
+                              );
+                            },
                           ),
                           const Divider(height: 1, indent: 16, endIndent: 16),
                           RadioListTile<PaymentMethod>(

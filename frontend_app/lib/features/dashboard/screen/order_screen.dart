@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/shared/models/order_model.dart';
 import 'package:flutter_dapm/shared/services/order_service.dart';
+import 'package:flutter_dapm/features/dashboard/screen/order_detail_screen.dart';
 import 'package:intl/intl.dart';
 
 class OrderScreen extends StatefulWidget {
@@ -130,7 +131,12 @@ class _OrderScreenState extends State<OrderScreen> {
                 ),
                 OutlinedButton(
                   onPressed: () {
-                    // TODO: Chuyển đến trang chi tiết đơn hàng
+                    // Điều hướng đến trang chi tiết và truyền ID của đơn hàng
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => OrderDetailScreen(orderId: order.id),
+                      ),
+                    );
                   },
                   child: const Text('Xem chi tiết'),
                 )
