@@ -10,6 +10,7 @@ import 'package:flutter_dapm/shared/widgets/app_bar_cart_icon.dart';
 import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dapm/shared/provider/user_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -106,50 +107,83 @@ class _HomeScreenState extends State<HomeScreen> {
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
     return Drawer(
-      child: Container(
-        color: Colors.deepOrange[100],
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.deepOrange),
-              child: Center(child: Text('L O G O', style: TextStyle(color: Colors.white, fontSize: 24))),
+        child: Container(
+            color: Colors.deepOrange[100],
+            child: Consumer<UserProvider>( // <<<--- BỌC TOÀN BỘ BẰNG CONSUMER
+                builder: (context, userProvider, child) {
+                  // Kiểm tra xem người dùng có phải admin không
+                  final bool isAdmin = userProvider.isAdmin;
+
+                  return ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      const DrawerHeader(
+                        decoration: BoxDecoration(color: Colors.deepOrange),
+                        child: Center(child: Text('L O G O', style: TextStyle(color: Colors.white, fontSize: 24))),
+                      ),
+
+                      // --- MỤC CHUNG CHO CẢ USER VÀ ADMIN ---
+                      if (!isAdmin) // Chỉ hiện ví cho customer
+                        Consumer<WalletProvider>(
+                          builder: (context, walletProvider, child) {
+                            final balance = walletProvider.balance ?? 0.0;
+                            return ListTile(
+                              leading: const Icon(Icons.account_balance_wallet_outlined, color: Colors.deepOrange),
+                              title: const Text('Số dư ví', style: TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(
+                                currencyFormatter.format(balance),
+                                style: const TextStyle(fontSize: 16, color: Colors.green, fontWeight: FontWeight.bold),
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: walletProvider.isLoading ? Colors.grey : Colors.blue,
+                                ),
+                                onPressed: walletProvider.isLoading ? null : () {
+                                  Provider.of<WalletProvider>(context, listen: false).fetchWallet();
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      if (!isAdmin) const Divider(),
+
+                      // --- MỤC DÀNH RIÊNG CHO ADMIN ---
+                      if (isAdmin)
+                        ...[ // Dùng '...' để thêm một list widget
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                            child: Text("QUẢN LÝ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.people_alt_outlined),
+                            title: const Text('Quản lý Người dùng'),
+                            onTap: () {
+                              // TODO: Navigator.push đến AdminUserManagementScreen
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.restaurant_menu_outlined),
+                            title: const Text('Quản lý Món ăn'),
+                            onTap: () {
+                              // TODO: Navigator.push đến AdminMenuManagementScreen
+                            },
+                          ),
+                          const Divider(),
+                        ],
+
+                      // --- MỤC DÀNH RIÊNG CHO CUSTOMER ---
+                      if (!isAdmin)
+                        ...[
+                          ListTile(leading: const Icon(Icons.home), title: const Text('Trang Chủ'), onTap: () => Navigator.pop(context)),
+                          ListTile(leading: const Icon(Icons.person), title: const Text('Trang Cá Nhân'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen())); }),
+                          ListTile(leading: const Icon(Icons.shopping_cart), title: const Text('Đơn hàng'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const OrderScreen())); }),
+                        ],
+                    ],
+                  );
+                },
             ),
-            // --- THÊM PHẦN HIỂN THỊ SỐ DƯ VÍ ---
-            Consumer<WalletProvider>(
-              builder: (context, walletProvider, child) {
-                // Lấy số dư, nếu null thì mặc định là 0
-                final balance = walletProvider.balance ?? 0.0;
-                return ListTile(
-                  leading: const Icon(Icons.account_balance_wallet_outlined, color: Colors.deepOrange),
-                  title: const Text('Số dư ví', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    currencyFormatter.format(balance),
-                    style: const TextStyle(fontSize: 16, color: Colors.green, fontWeight: FontWeight.bold),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.refresh,
-                      color: walletProvider.isLoading ? Colors.grey : Colors.blue,
-                    ),
-                    // Vô hiệu hóa nút khi đang tải
-                    onPressed: walletProvider.isLoading
-                        ? null
-                        : () {
-                      // Gọi hàm fetchWallet để cập nhật lại số dư
-                      Provider.of<WalletProvider>(context, listen: false).fetchWallet();
-                    },
-                  ),
-                );
-              },
-            ),
-            const Divider(), // Thêm đường kẻ ngang cho đẹp
-            ListTile(leading: const Icon(Icons.home), title: const Text('Trang Chủ'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.person), title: const Text('Trang Cá Nhân'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen())); }),
-            ListTile(leading: const Icon(Icons.shopping_cart), title: const Text('Đơn hàng'), onTap: () { Navigator.pop(context); Navigator.of(context).push(MaterialPageRoute(builder: (context) => const OrderScreen())); }),
-          ],
         ),
-      ),
     );
   }
 

@@ -10,6 +10,9 @@ import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
 import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
+import 'package:flutter_dapm/shared/provider/user_provider.dart'; // Import
+import 'package:flutter_dapm/shared/models/user_model.dart';
+import 'package:flutter_dapm/features/dashboard/screen/admin_dashboard_screen.dart';
 
 
 
@@ -98,16 +101,32 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loginSuccess(Response response) async {
     final token = response.data['token'];
-    final userName = response.data['user']['name'];
+    final userJson = response.data['user'];
+
+    // Tạo đối tượng UserModel từ JSON
+    final user = UserModel.fromJson(response.data['user']);
+
     await _storage.write(key: 'jwt_token', value: token);
-    await _box.write('user_name', userName);
+    await _box.write('user_name', user.name);
     if (mounted) {
-      // Tải giỏ hàng trước khi vào trang chủ
-      await Provider.of<CartProvider>(context, listen: false).fetchCart();
-      await Provider.of<WalletProvider>(context, listen: false).fetchWallet();
-      Navigator.of(context).pushReplacement(
-        CustomPageRoute(child: const DashboardScreen(), type: PageTransitionType.scale),
-      );
+      Provider.of<UserProvider>(context, listen: false).setUser(user);
+
+      // Nếu là customer, tải giỏ hàng và ví
+      if (user.role != 'admin') {
+        await Provider.of<CartProvider>(context, listen: false).fetchCart();
+        await Provider.of<WalletProvider>(context, listen: false).fetchWallet();
+      }
+
+      // Điều hướng dựa trên role
+      if (user.role == 'admin') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      }
     }
   }
 

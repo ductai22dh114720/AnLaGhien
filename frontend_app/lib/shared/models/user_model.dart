@@ -5,11 +5,12 @@ class UserModel {
   final String email;
   final String phone;
   final String address;
-  final String? avatarUrl; // Thêm trường này
+  final String? avatarUrl;
+  final String role;// Thêm trường này
 
   UserModel({
     required this.id, required this.name, required this.email,
-    required this.phone, required this.address, this.avatarUrl
+    required this.phone, required this.address, this.avatarUrl, required this.role
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -19,7 +20,8 @@ class UserModel {
       email: json['email'],
       phone: json['phone'],
       address: json['address'],
-      avatarUrl: json['avatarUrl'], // Có thể null
+      avatarUrl: json['avatarUrl'],
+      role: json['role'] ?? 'customer',
     );
   }
 }

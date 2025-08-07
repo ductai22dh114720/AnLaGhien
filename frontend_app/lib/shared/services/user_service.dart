@@ -69,4 +69,37 @@ class UserService {
       return false;
     }
   }
+  // [ADMIN] Lấy danh sách tất cả người dùng
+  Future<List<UserModel>> getAllUsers() async {
+    try {
+      // Endpoint này là /api/user/ (số ít) theo server.js của bạn
+      const String url = '${ApiConfig.baseUrl}/user';
+      final response = await _dio.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> userData = response.data;
+        return userData.map((json) => UserModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Lỗi khi lấy danh sách người dùng: $e");
+      return [];
+    }
+  }
+
+  // [ADMIN] Cập nhật quyền của một người dùng
+  Future<bool> updateUserRole(String userId, String newRole) async {
+    try {
+      // Endpoint: /api/user/:id/role
+      final String url = '${ApiConfig.baseUrl}/user/$userId/role';
+      final response = await _dio.put(
+        url,
+        data: {'role': newRole},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Lỗi khi cập nhật quyền người dùng: $e");
+      return false;
+    }
+  }
 }
