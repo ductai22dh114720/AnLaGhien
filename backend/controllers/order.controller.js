@@ -87,7 +87,14 @@ exports.getOrderHistory = async (req, res) => {
     // Tìm tất cả đơn hàng của user, sắp xếp từ mới nhất đến cũ nhất
     const orders = await Order.find({ customer: userId })
       .sort({ createdAt: -1 }) // -1 để sắp xếp giảm dần (mới nhất trước)
-      .populate('items.menuItem', 'name imageUrl'); // Lấy thêm 'name' và 'imageUrl' của sản phẩm
+      .populate({
+              path: 'items.menuItem',
+              select: 'name imageUrl restaurant', // Lấy thêm trường restaurant
+              populate: {
+                path: 'restaurant',
+                select: 'name' // Chỉ lấy tên của nhà hàng
+              }
+            }); // Lấy thêm 'name' và 'imageUrl' của sản phẩm
 
     res.status(200).json(orders);
   } catch (error) {
