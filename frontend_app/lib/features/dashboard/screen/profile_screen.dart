@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/authentication/screen/login_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dapm/features/dashboard/screen/user_screen.dart';
+import 'package:flutter_dapm/shared/models/order_model.dart';
 import 'package:flutter_dapm/shared/models/user_model.dart';
+import 'package:flutter_dapm/shared/services/order_service.dart';
 import 'package:flutter_dapm/shared/services/user_service.dart';
 import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -16,14 +20,31 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   // --- BIẾN TRẠNG THÁI ---
   late Future<UserModel?> _userFuture;
+  late Future<List<OrderModel>> _ordersFuture;
 
   // --- VÒNG ĐỜI WIDGET ---
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    // SỬA LẠI: Khởi tạo các future trực tiếp, không gọi setState()
+    _userFuture = UserService().getUserProfile();
+    _ordersFuture = OrderService().getOrderHistory();
   }
 
+  // Hàm này dùng để tải lại dữ liệu khi cần (ví dụ: nhấn nút "Thử lại")
+  void _reloadData() {
+    setState(() {
+      _userFuture = UserService().getUserProfile();
+      _ordersFuture = OrderService().getOrderHistory();
+    });
+  }
+  // Tải tất cả dữ liệu cần thiết
+  void _loadInitialData() {
+    setState(() {
+      _userFuture = UserService().getUserProfile();
+      _ordersFuture = OrderService().getOrderHistory(); // <<<--- TẢI ĐƠN HÀNG
+    });
+  }
   void _loadUserProfile() {
     setState(() {
       _userFuture = UserService().getUserProfile();
@@ -87,86 +108,159 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: FutureBuilder<UserModel?>(
         future: _userFuture,
-        builder: (context, snapshot) {
-          // Trường hợp đang tải
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          // Trường hợp có lỗi hoặc không có dữ liệu
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Không thể tải dữ liệu người dùng.'),
-                  const SizedBox(height: 10),
-                  ElevatedButton(onPressed: _loadUserProfile, child: const Text('Thử lại'))
-                ],
-              ),
-            );
+          if (userSnapshot.hasError || !userSnapshot.hasData) {
+            return _buildErrorState(); // Hàm này giờ sẽ gọi _reloadData
           }
+          final user = userSnapshot.data!;
 
-          // Trường hợp có dữ liệu thành công
-          final user = snapshot.data!;
-          return _buildProfileView(user);
+          // Sau khi có user, build tiếp Future cho đơn hàng
+          return FutureBuilder<List<OrderModel>>(
+            future: _ordersFuture,
+            builder: (context, orderSnapshot) {
+              // Vẫn có thể hiển thị profile dù đơn hàng đang tải hoặc lỗi
+              List<OrderModel> orders = [];
+              if (orderSnapshot.connectionState == ConnectionState.done && orderSnapshot.hasData) {
+                orders = orderSnapshot.data!;
+              }
+              // Build giao diện chính với cả user và orders
+              return _buildProfileView(user, orders);
+            },
+          );
         },
       ),
     );
   }
 
-  // --- WIDGETS HELPER ---
 
-  // Widget chính để xây dựng nội dung trang profile
-  Widget _buildProfileView(UserModel user) {
+  // --- CÁC WIDGET HELPER ---
+  // --- CÁC WIDGET HELPER ---
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Không thể tải dữ liệu người dùng.'),
+          const SizedBox(height: 10),
+          ElevatedButton(
+              onPressed: _reloadData, // Sửa lại để gọi hàm tải lại tất cả
+              child: const Text('Thử lại')
+          )
+        ],
+      ),
+    );
+  }
+
+  // SỬA LẠI: hàm then() của Navigator
+  Widget _buildProfileView(UserModel user, List<OrderModel> orders) {
     return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          _buildProfileHeader(user),
+          const SizedBox(height: 24),
+          _buildMyPurchasesSection(orders),
+          const SizedBox(height: 24),
+          _buildSettingsGroup(
+            title: "Tài khoản",
+            children: [
+              _buildProfileOption(
+                icon: Icons.person_outline,
+                title: "Thông tin cá nhân",
+                onTap: () {
+                  Navigator.of(context).push(
+                    CustomPageRoute(child: UserScreen(user: user), type: PageTransitionType.slide),
+                  ).then((result) {
+                    if (result == true) _reloadData(); // Tải lại cả user và đơn hàng
+                  });
+                },
+              ),
+              _buildProfileOption(icon: Icons.location_on_outlined, title: "Địa chỉ của tôi", onTap: () {}),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildSettingsGroup(
+            title: "Hỗ trợ & Cài đặt",
+            children: [
+              _buildProfileOption(icon: Icons.notifications_none_outlined, title: "Thông báo", onTap: () {}),
+              _buildProfileOption(icon: Icons.help_outline, title: "Trung tâm hỗ trợ", onTap: () {}),
+              _buildProfileOption(icon: Icons.info_outline, title: "Về chúng tôi", onTap: () {}),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildLogoutButton(),
+        ],
+      ),
+    );
+  }
+
+  // WIDGET MỚI: Xây dựng khu vực "Đơn mua"
+  Widget _buildMyPurchasesSection(List<OrderModel> orders) {
+    // Đếm số lượng đơn hàng cho mỗi trạng thái
+    final pendingCount = orders.where((o) => o.status == 'pending').length;
+    final confirmedCount = orders.where((o) => o.status == 'confirmed').length;
+    final deliveryCount = orders.where((o) => o.status == 'out_for_delivery').length;
+    final deliveredCount = orders.where((o) => o.status == 'delivered').length;
+
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+      child: Column(
+        children: [
+          ListTile(
+            title: const Text("Đơn mua", style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: Text("Xem lịch sử mua hàng >", style: TextStyle(color: Colors.grey[600])),
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const OrderScreen()));
+            },
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildPurchaseStatusItem(icon: Icons.wallet_giftcard_outlined, label: "Chờ xác nhận", count: pendingCount, onTap: () => _navigateToOrders(0)),
+                _buildPurchaseStatusItem(icon: Icons.inventory_2_outlined, label: "Chờ lấy hàng", count: confirmedCount, onTap: () => _navigateToOrders(1)),
+                _buildPurchaseStatusItem(icon: Icons.local_shipping_outlined, label: "Đang giao", count: deliveryCount, onTap: () => _navigateToOrders(2)),
+                _buildPurchaseStatusItem(icon: Icons.star_border_outlined, label: "Đã giao", count: deliveredCount, onTap: () => _navigateToOrders(3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper để tạo một mục trạng thái đơn hàng
+  Widget _buildPurchaseStatusItem({required IconData icon, required String label, required int count, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        width: 75, // Giới hạn chiều rộng
         child: Column(
           children: [
-            _buildProfileHeader(user),
-            const SizedBox(height: 30),
-            _buildSettingsGroup(
-              title: "Tài khoản",
-              children: [
-                _buildProfileOption(
-                  icon: Icons.person_outline,
-                  title: "Thông tin cá nhân",
-                  onTap: () {
-                    Navigator.of(context).push(
-                      CustomPageRoute(
-                        child: UserScreen(user: user),
-                        type: PageTransitionType.slide, // <-- Hiệu ứng trượt
-                      ),
-                    ).then((result) {
-                      // Nếu trang UserScreen trả về true (có nghĩa là đã cập nhật), thì tải lại profile
-                      if (result == true) {
-                        _loadUserProfile();
-                      }
-                    });
-                  },
-                ),
-                _buildProfileOption(icon: Icons.location_on_outlined, title: "Địa chỉ của tôi", onTap: () {}),
-                _buildProfileOption(icon: Icons.receipt_long_outlined, title: "Lịch sử đơn hàng", onTap: () {}),
-              ],
+            Badge(
+              label: Text('$count'),
+              isLabelVisible: count > 0,
+              child: Icon(icon, size: 30, color: Colors.grey[700]),
             ),
-            const SizedBox(height: 20),
-            _buildSettingsGroup(
-              title: "Hỗ trợ & Cài đặt",
-              children: [
-                _buildProfileOption(icon: Icons.notifications_none_outlined, title: "Thông báo", onTap: () {}),
-                _buildProfileOption(icon: Icons.help_outline, title: "Trung tâm hỗ trợ", onTap: () {}),
-                _buildProfileOption(icon: Icons.info_outline, title: "Về chúng tôi", onTap: () {}),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildLogoutButton(),
+            const SizedBox(height: 8),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
           ],
         ),
       ),
     );
   }
-  // --- CÁC WIDGET HELPER ---
 
+  // Helper để điều hướng đến OrderScreen với tab được chọn
+  void _navigateToOrders(int index) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (context) => OrderScreen(initialIndex: index)));
+  }
   Widget _buildProfileHeader(UserModel user) {
     return Column(
       children: [

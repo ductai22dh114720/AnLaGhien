@@ -284,27 +284,42 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildTransactionHistory(List<TransactionModel> transactions) {
-    if (transactions.isEmpty) {
-      return const Center(child: Text("Chưa có giao dịch nào."));
+    // THÊM BƯỚC LỌC DỮ LIỆU Ở ĐÂY
+    // Giả sử trạng thái hoàn thành có tên là 'completed' trong model của bạn
+    final completedTransactions = transactions
+        .where((transaction) => transaction.status == 'completed')
+        .toList();
+
+    // Kiểm tra danh sách SAU KHI đã lọc
+    if (completedTransactions.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 32.0),
+        child: Text("Chưa có giao dịch nào hoàn thành."),
+      ));
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("Lịch sử giao dịch", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
+        // Sử dụng danh sách đã lọc để build ListView
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactions.length, // <-- Dùng transactions.length
+          itemCount: completedTransactions.length,
           itemBuilder: (context, index) {
-            final transaction = transactions[index]; // <-- Lấy từ danh sách thật
+            final transaction = completedTransactions[index]; // Lấy từ danh sách đã lọc
             bool isCredit = transaction.amount > 0;
             return ListTile(
               leading: CircleAvatar(
                 backgroundColor: isCredit ? Colors.green.shade100 : Colors.red.shade100,
                 child: Icon(isCredit ? Icons.add : Icons.remove, color: isCredit ? Colors.green : Colors.red),
               ),
-              title: Text(transaction.type == 'deposit' ? 'Nạp tiền' : 'Thanh toán', style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                  _getTransactionTitle(transaction.type), // Dùng hàm helper cho gọn
+                  style: const TextStyle(fontWeight: FontWeight.bold)
+              ),
               subtitle: Text(DateFormat('dd/MM/yyyy, HH:mm').format(transaction.createdAt)),
               trailing: Text(
                 '${isCredit ? '+' : ''}${currencyFormatter.format(transaction.amount)}',
@@ -316,5 +331,18 @@ class _WalletScreenState extends State<WalletScreen> {
         ),
       ],
     );
+  }
+  // (Tùy chọn) Thêm hàm helper để dịch 'type' ra Tiếng Việt
+  String _getTransactionTitle(String type) {
+    switch (type) {
+      case 'deposit':
+        return 'Nạp tiền vào ví';
+      case 'payment':
+        return 'Thanh toán đơn hàng';
+      case 'withdraw':
+        return 'Rút tiền';
+      default:
+        return 'Giao dịch khác';
+    }
   }
 }

@@ -1,6 +1,5 @@
 // lib/models/order_model.dart
 
-// Model cho một món trong đơn hàng
 class OrderItemModel {
   final String name;
   final String? imageUrl;
@@ -15,19 +14,17 @@ class OrderItemModel {
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
-    // menuItem có thể là null nếu sản phẩm bị xóa, cần xử lý
-    final menuItemData = json['menuItem'] as Map<String, dynamic>? ?? {};
+    final menuItemData = json['menuItem'] as Map<String, dynamic>?;
 
     return OrderItemModel(
-      name: menuItemData['name'] ?? 'Sản phẩm đã bị xóa',
-      imageUrl: menuItemData['imageUrl'],
-      quantity: json['quantity'],
-      priceAtOrder: (json['priceAtOrder'] as num).toDouble(),
+      name: menuItemData?['name'] as String? ?? 'Sản phẩm không còn tồn tại',
+      imageUrl: menuItemData?['imageUrl'] as String?,
+      quantity: json['quantity'] as int? ?? 1,
+      priceAtOrder: (json['priceAtOrder'] as num? ?? 0).toDouble(),
     );
   }
 }
 
-// Model cho cả đơn hàng
 class OrderModel {
   final String id;
   final List<OrderItemModel> items;
@@ -35,6 +32,7 @@ class OrderModel {
   final String deliveryAddress;
   final String status;
   final DateTime createdAt;
+  final String restaurantName;
 
   OrderModel({
     required this.id,
@@ -43,18 +41,33 @@ class OrderModel {
     required this.deliveryAddress,
     required this.status,
     required this.createdAt,
+    required this.restaurantName,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    String restName = 'Không rõ nhà hàng';
+    try {
+      final itemsList = json['items'] as List?;
+      if (itemsList != null && itemsList.isNotEmpty) {
+        final firstItem = itemsList.first as Map<String, dynamic>?;
+        final menuItem = firstItem?['menuItem'] as Map<String, dynamic>?;
+        final restaurant = menuItem?['restaurant'] as Map<String, dynamic>?;
+        restName = restaurant?['name'] as String? ?? restName;
+      }
+    } catch (e) {
+      print("Lỗi khi parse tên nhà hàng: $e");
+    }
+
     return OrderModel(
-      id: json['_id'],
-      items: (json['items'] as List)
+      id: json['_id'] as String? ?? '',
+      items: (json['items'] as List? ?? [])
           .map((itemJson) => OrderItemModel.fromJson(itemJson))
           .toList(),
-      totalAmount: (json['totalAmount'] as num).toDouble(),
-      deliveryAddress: json['deliveryAddress'],
-      status: json['status'],
-      createdAt: DateTime.parse(json['createdAt']),
+      totalAmount: (json['totalAmount'] as num? ?? 0).toDouble(),
+      deliveryAddress: json['deliveryAddress'] as String? ?? 'N/A',
+      status: json['status'] as String? ?? 'unknown',
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      restaurantName: restName,
     );
   }
 }
