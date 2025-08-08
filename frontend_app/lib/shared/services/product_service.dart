@@ -37,7 +37,22 @@ class ProductService {
       return [];
     }
   }
-
+  // [PUBLIC] Tìm kiếm món ăn
+  Future<List<MenuItemModel>> searchMenuItems(String query) async {
+    try {
+      // URL có dạng: /api/menu-items/search?query=burger
+      const url = '${ApiConfig.baseUrl}/menu-items/search';
+      final response = await _dio.get(url, queryParameters: {'query': query});
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => MenuItemModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Lỗi khi tìm kiếm món ăn: $e");
+      return [];
+    }
+  }
   // --- CÁC HÀM MỚI CHO ADMIN ---
 
   // [ADMIN] Tạo món ăn mới

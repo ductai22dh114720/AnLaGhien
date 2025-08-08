@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dapm/features/dashboard/screen/checkout_screen.dart'; // <<<--- IMPORT
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
-import '../../../shared/theme/app_styles.dart';
+import 'package:flutter_dapm/shared/theme/app_styles.dart';
+import 'package:intl/intl.dart'; // <<<--- IMPORT
 
 class DetailsScreen extends StatefulWidget {
   final String menuItemId;
@@ -26,159 +28,189 @@ class DetailsScreen extends StatefulWidget {
 class _DetailsScreenState extends State<DetailsScreen> {
   int quantity = 1;
 
+  // --- HÀM LOGIC MỚI ---
+  void _buyNow() {
+    // 1. Thêm sản phẩm hiện tại vào giỏ hàng
+    Provider.of<CartProvider>(context, listen: false).addItemToCart(widget.menuItemId, quantity: quantity);
+
+    // 2. Chuyển ngay đến màn hình thanh toán
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+    );
+  }
+
+  void _addToCart() {
+    Provider.of<CartProvider>(context, listen: false).addItemToCart(widget.menuItemId, quantity: quantity);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã thêm vào giỏ hàng!'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Nút quay lại
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.deepOrange,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                ),
-              ),
-              const SizedBox(height: 20),
+    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
-              // Ảnh sản phẩm
-              Center(
-                // SỬA LỖI CHÍNH: Dùng Image.network thay vì Image.asset để tải ảnh từ URL
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: CustomScrollView( // Sử dụng CustomScrollView để có hiệu ứng đẹp hơn
+        slivers: [
+          // --- PHẦN HÌNH ẢNH VÀ APPBAR ---
+          SliverAppBar(
+            expandedHeight: MediaQuery.of(context).size.height * 0.4,
+            pinned: true,
+            backgroundColor: Colors.deepOrange,
+            foregroundColor: Colors.white,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Hero( // Hiệu ứng chuyển cảnh ảnh
+                tag: widget.menuItemId, // Dùng ID sản phẩm làm tag
                 child: Image.network(
                   widget.imageUrl,
-                  height: MediaQuery.of(context).size.height / 3,
-                  fit: BoxFit.contain,
-                  // Thêm errorBuilder để hiển thị icon thay thế nếu ảnh lỗi
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(Icons.broken_image, size: MediaQuery.of(context).size.height / 4, color: Colors.grey);
-                  },
-                  // Thêm loadingBuilder để hiển thị vòng xoay khi đang tải
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return SizedBox(
-                      height: MediaQuery.of(context).size.height / 3,
-                      child: const Center(child: CircularProgressIndicator()),
-                    );
-                  },
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stack) => const Icon(Icons.fastfood, size: 100, color: Colors.grey),
                 ),
               ),
-              const SizedBox(height: 20),
+            ),
+          ),
 
-              // Tên và mô tả sản phẩm (lấy từ widget)
-              Text(widget.title, style: AppStyles.headlineTextFeildStyle()),
-              const SizedBox(height: 10),
-              Text(widget.description, style: TextStyle(color: Colors.grey[600], height: 1.5)),
-              const SizedBox(height: 24),
-
-              // Phần chọn số lượng
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // --- PHẦN THÔNG TIN SẢN PHẨM ---
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Số lượng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  // Tên sản phẩm và Giá
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildQuantityButton(
-                        icon: Icons.remove,
-                        onPressed: () {
-                          if (quantity > 1) setState(() => quantity--);
-                        },
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      const SizedBox(width: 16),
+                      Text(
+                        currencyFormatter.format(widget.price),
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepOrange),
                       ),
-                      _buildQuantityButton(
-                        icon: Icons.add,
-                        onPressed: () => setState(() => quantity++),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Mô tả
+                  const Text("Mô tả", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.description,
+                    style: TextStyle(color: Colors.grey[700], fontSize: 16, height: 1.5),
+                  ),
+                  const SizedBox(height: 24),
+
+                  const Divider(),
+                  const SizedBox(height: 24),
+
+                  // Chọn số lượng
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Số lượng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      Row(
+                        children: [
+                          _buildQuantityButton(
+                            icon: Icons.remove,
+                            onPressed: () {
+                              if (quantity > 1) setState(() => quantity--);
+                            },
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Text(quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                          ),
+                          _buildQuantityButton(
+                            icon: Icons.add,
+                            onPressed: () => setState(() => quantity++),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ],
               ),
-              const Spacer(), // Đẩy phần footer xuống dưới
-
-              // Tổng tiền + nút thêm vào giỏ hàng
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 2,
-                      blurRadius: 10,
-                      offset: const Offset(0, -3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Tổng tiền', style: TextStyle(color: Colors.grey[600])),
-                          const SizedBox(height: 4),
-                          // SỬA LỖI: Sử dụng giá tiền từ widget.price
-                          Text(
-                            '${(quantity * widget.price).toStringAsFixed(0)}đ',
-                            style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.deepOrange),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Provider.of<CartProvider>(context, listen: false).addItemToCart(widget.menuItemId, quantity: quantity);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã thêm vào giỏ hàng!'), duration: Duration(seconds: 1)),
-                        );
-                      },
-                      icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                      label: const Text('Thêm vào giỏ', style: TextStyle(fontSize: 16, color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrange,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
+      ),
+      // --- PHẦN FOOTER VỚI CÁC NÚT HÀNH ĐỘNG ---
+      bottomNavigationBar: _buildBottomActionBar(),
+    );
+  }
+
+  // Widget footer
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Nút Thêm vào giỏ
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _addToCart,
+              icon: const Icon(Icons.add_shopping_cart_outlined),
+              label: const Text('Thêm giỏ'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: Colors.deepOrange),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Nút Mua ngay
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _buyNow,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Mua ngay', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  // Widget nút +/-
   Widget _buildQuantityButton({required IconData icon, required VoidCallback onPressed}) {
-    return OutlinedButton(
+    return ElevatedButton(
       onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
+      style: ElevatedButton.styleFrom(
         shape: const CircleBorder(),
-        padding: const EdgeInsets.all(8),
-        side: BorderSide(color: Colors.grey.shade300),
+        padding: const EdgeInsets.all(12),
+        backgroundColor: Colors.grey[200],
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
-      child: Icon(icon, color: Colors.deepOrange),
+      child: Icon(icon, size: 20),
     );
   }
 }

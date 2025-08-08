@@ -38,6 +38,27 @@ exports.addMenuItem = async (req, res) => {
         res.status(500).json({ message: "Không thể thêm món ăn mới." });
     }
 };
+// [PUBLIC]  Tìm kiếm món ăn theo tên
+exports.searchMenuItems = async (req, res) => {
+    try {
+        const { query } = req.query; // Lấy từ khóa từ query param (?query=...)
+
+        if (!query) {
+            return res.status(400).json({ message: 'Vui lòng cung cấp từ khóa tìm kiếm.' });
+        }
+
+        // Tìm kiếm không phân biệt chữ hoa/thường
+        const menuItems = await MenuItem.find({
+            name: { $regex: query, $options: 'i' }
+        });
+
+        res.status(200).json(menuItems);
+
+    } catch (error) {
+        console.error("Lỗi khi tìm kiếm món ăn:", error);
+        res.status(500).json({ message: "Lỗi server khi tìm kiếm món ăn." });
+    }
+};
 // [ADMIN] Tạo một món ăn mới
 exports.createMenuItem = async (req, res) => {
     try {
