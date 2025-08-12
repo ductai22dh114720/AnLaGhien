@@ -59,6 +59,26 @@ exports.searchMenuItems = async (req, res) => {
         res.status(500).json({ message: "Lỗi server khi tìm kiếm món ăn." });
     }
 };
+// [PUBLIC] Lấy gợi ý tìm kiếm (chỉ trả về tên)
+exports.getSearchSuggestions = async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) {
+            return res.json([]);
+        }
+
+        // Tìm các món ăn khớp, chỉ lấy trường 'name', và giới hạn 10 kết quả
+        const suggestions = await MenuItem.find(
+            { name: { $regex: query, $options: 'i' } },
+            'name' // Chỉ chọn trường 'name'
+        ).limit(10);
+
+        // Trả về một mảng các chuỗi tên
+        res.status(200).json(suggestions.map(item => item.name));
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi server khi lấy gợi ý." });
+    }
+};
 // [ADMIN] Tạo một món ăn mới
 exports.createMenuItem = async (req, res) => {
     try {

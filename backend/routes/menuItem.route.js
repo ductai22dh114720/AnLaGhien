@@ -9,6 +9,8 @@ const adminMiddleware = require('../middleware/admin.middleware');
 // GET /api/menu-items/
 router.get('/', menuItemController.getAllMenuItems);
 router.post('/add', menuItemController.addMenuItem);
+// [PUBLIC]  Lấy gợi ý
+router.get('/suggestions', menuItemController.getSearchSuggestions);
 // [PUBLIC] Tìm kiếm món ăn
 router.get('/search',menuItemController.searchMenuItems);
 

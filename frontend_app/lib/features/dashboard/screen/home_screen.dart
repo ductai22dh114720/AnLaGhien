@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart'; // <<<--- IMPORT
-import 'package:intl/intl.dart';
-
+import 'package:flutter_dapm/features/dashboard/screen/search_screen.dart';
 // Import các model, provider và service cần thiết
 import 'package:flutter_dapm/shared/models/menu_item_model.dart';
-import 'package:flutter_dapm/shared/provider/user_provider.dart';
-import 'package:flutter_dapm/shared/provider/wallet_provider.dart';
 import 'package:flutter_dapm/shared/services/product_service.dart';
-
-
-// Import các màn hình
-import 'package:flutter_dapm/features/authentication/screen/details_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/order_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/profile_screen.dart';
 import 'package:flutter_dapm/shared/widgets/app_bar_cart_icon.dart';
-
 //Import Widget
 import 'package:flutter_dapm/shared/widgets/product_card_widget.dart';
+import 'package:google_fonts/google_fonts.dart'; // <<<--- IMPORT
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback toggleMenu;
+
+  const HomeScreen({super.key, required this.toggleMenu});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -33,6 +25,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // Danh sách các danh mục
   final List<String> _categories = ['Foods', 'Drinks', 'Snacks', 'Sauce'];
+
+  // HÀM MỚI: Xử lý khi người dùng gửi yêu cầu tìm kiếm
+  void _handleSearch(String query) {
+    if (query.trim().isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          // Điều hướng đến SearchScreen và truyền query
+          builder: (context) => SearchScreen(searchQuery: query.trim()),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -50,33 +54,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFFA4A0C); // Màu cam chủ đạo
-    const Color backgroundColor = Color(0xFFF2F2F2); // Màu nền xám nhạt
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: const Color(0xFFF2F2F2),
       appBar: AppBar(
-        backgroundColor: backgroundColor,
+        backgroundColor: const Color(0xFFF2F2F2),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.black),
-          onPressed: () => Scaffold.of(context).openDrawer(),
+          onPressed: widget.toggleMenu, // Gọi hàm được truyền vào
         ),
         actions: const [AppBarCartIcon(), SizedBox(width: 16)],
       ),
-      drawer: _buildDrawer(),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return <Widget>[
             // Phần header chứa tiêu đề và thanh tìm kiếm
-            SliverToBoxAdapter(
-              child: _buildHeader(),
-            ),
+            SliverToBoxAdapter(child: _buildHeader()),
             // Thanh TabBar được "ghim" lại khi cuộn
             SliverPersistentHeader(
               delegate: _SliverAppBarDelegate(
                 TabBar(
                   controller: _tabController,
-                  tabs: _categories.map((String name) => Tab(text: name)).toList(),
+                  tabs:
+                      _categories
+                          .map((String name) => Tab(text: name))
+                          .toList(),
                   labelColor: primaryColor,
                   unselectedLabelColor: Colors.grey,
                   indicatorColor: primaryColor,
@@ -95,14 +98,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+            if (snapshot.hasError ||
+                !snapshot.hasData ||
+                snapshot.data!.isEmpty) {
               return const Center(child: Text("Không có sản phẩm nào."));
             }
             final allItems = snapshot.data!;
 
             // UI cho danh sách sản phẩm
             return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 40, 20, 20), // Padding trên để ảnh nổi lên
+              padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+              // Padding trên để ảnh nổi lên
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2, // 2 cột
                 mainAxisSpacing: 30,
@@ -119,7 +125,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-// --- WIDGETS HELPER MỚI ---
+
+  // --- WIDGETS HELPER MỚI ---
 
   Widget _buildHeader() {
     return Padding(
@@ -137,6 +144,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 28),
           TextField(
+            onSubmitted: (value) {
+              _handleSearch(value); // Gọi hàm xử lý khi nhấn enter/search
+            },
             decoration: InputDecoration(
               hintText: 'Search',
               prefixIcon: const Icon(Icons.search, color: Colors.black),
@@ -154,122 +164,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
-
-  Widget _buildDrawer() {
-    final currencyFormatter = NumberFormat.currency(
-        locale: 'vi_VN', symbol: 'đ');
-
-    return Drawer(
-      child: Container(
-        color: Colors.deepOrange[100],
-        child: Consumer<UserProvider>( // <<<--- BỌC TOÀN BỘ BẰNG CONSUMER
-          builder: (context, userProvider, child) {
-            // Kiểm tra xem người dùng có phải admin không
-            final bool isAdmin = userProvider.isAdmin;
-
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                const DrawerHeader(
-                  decoration: BoxDecoration(color: Colors.deepOrange),
-                  child: Center(child: Text('L O G O',
-                      style: TextStyle(color: Colors.white, fontSize: 24))),
-                ),
-
-                // --- MỤC CHUNG CHO CẢ USER VÀ ADMIN ---
-                if (!isAdmin) // Chỉ hiện ví cho customer
-                  Consumer<WalletProvider>(
-                    builder: (context, walletProvider, child) {
-                      final balance = walletProvider.balance ?? 0.0;
-                      return ListTile(
-                        leading: const Icon(
-                            Icons.account_balance_wallet_outlined, color: Colors
-                            .deepOrange),
-                        title: const Text('Số dư ví', style: TextStyle(
-                            fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          currencyFormatter.format(balance),
-                          style: const TextStyle(fontSize: 16,
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold),
-                        ),
-                        trailing: IconButton(
-                          icon: Icon(
-                            Icons.refresh,
-                            color: walletProvider.isLoading
-                                ? Colors.grey
-                                : Colors.blue,
-                          ),
-                          onPressed: walletProvider.isLoading ? null : () {
-                            Provider
-                                .of<WalletProvider>(context, listen: false)
-                                .fetchWallet();
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                if (!isAdmin) const Divider(),
-
-                // --- MỤC DÀNH RIÊNG CHO ADMIN ---
-                if (isAdmin)
-                  ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 8.0),
-                      child: Text("QUẢN LÝ", style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepOrange)),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.people_alt_outlined),
-                      title: const Text('Quản lý Người dùng'),
-                      onTap: () {
-                        // TODO: Navigator.push đến AdminUserManagementScreen
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.restaurant_menu_outlined),
-                      title: const Text('Quản lý Món ăn'),
-                      onTap: () {
-                        // TODO: Navigator.push đến AdminMenuManagementScreen
-                      },
-                    ),
-                    const Divider(),
-                  ],
-
-                // --- MỤC DÀNH RIÊNG CHO CUSTOMER ---
-                if (!isAdmin)
-                  ...[
-                    ListTile(leading: const Icon(Icons.home),
-                        title: const Text('Trang Chủ'),
-                        onTap: () => Navigator.pop(context)),
-                    ListTile(leading: const Icon(Icons.person),
-                        title: const Text('Trang Cá Nhân'),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.of(context).push(
-                              MaterialPageRoute(builder: (
-                                  context) => const ProfileScreen()));
-                        }),
-                    ListTile(leading: const Icon(Icons.shopping_cart),
-                        title: const Text('Đơn hàng'),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.of(context).push(
-                              MaterialPageRoute(builder: (
-                                  context) => const OrderScreen()));
-                        }),
-                  ],
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
 }
+
 // Class helper để ghim TabBar
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this._tabBar);
@@ -278,11 +174,16 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   double get minExtent => _tabBar.preferredSize.height;
+
   @override
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: const Color(0xFFF2F2F2), // Màu nền giống Scaffold
       child: _tabBar,

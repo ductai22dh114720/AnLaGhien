@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/authentication/screen/onboarding_screen.dart';
 import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
+import 'package:flutter_dapm/features/dashboard//screen/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
