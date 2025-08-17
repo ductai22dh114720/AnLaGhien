@@ -4,7 +4,9 @@ import 'package:flutter_dapm/shared/provider/cart_provider.dart';
 import 'package:flutter_dapm/features/dashboard/screen/cart_screen.dart';
 
 class AppBarCartIcon extends StatelessWidget {
-  const AppBarCartIcon({super.key});
+  final Color iconColor;
+
+  const AppBarCartIcon({super.key, this.iconColor = Colors.black, });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +17,7 @@ class AppBarCartIcon extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             IconButton(
-              icon: const Icon(Icons.shopping_cart_outlined),
+              icon:  Icon(Icons.shopping_cart_outlined, color: iconColor,),
               onPressed: () {
                 // Điều hướng đến trang Giỏ hàng
                 Navigator.of(context).push(
@@ -26,20 +28,20 @@ class AppBarCartIcon extends StatelessWidget {
             // Chỉ hiển thị huy hiệu nếu có sản phẩm trong giỏ
             if (cartProvider.totalItems > 0)
               Positioned(
-                top: 8,
-                right: 8,
+                top: 6,
+                right: 6,
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: Colors.red,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
+                    minWidth: 18,
+                    minHeight: 18,
                   ),
                   child: Text(
-                    cartProvider.totalItems.toString(),
+                    cartProvider.totalItems > 9 ? '9+' : cartProvider.totalItems.toString(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,

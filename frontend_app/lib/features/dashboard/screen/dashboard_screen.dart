@@ -18,10 +18,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   // Animation cho màn hình chính (trắng)
   late Animation<double> _mainScreenScaleAnimation;
   late Animation<double> _mainScreenSlideAnimation;
+  late Animation<double> _verticalMainScreenSlideAnimation;
+
   // Animation cho lớp đệm (cam)
   late Animation<double> _middleLayerScaleAnimation;
   late Animation<double> _middleLayerSlideAnimation;
   late Animation<double> _verticalSlideAnimation;
+
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _slideAnimation;
   int _currentTabIndex = 0;
 
   @override
@@ -29,17 +34,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     super.initState();
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     final curvedAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeOut);
-
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.8).animate(curvedAnimation);
+    _slideAnimation = Tween<double>(begin: 0, end: 240).animate(curvedAnimation);
     // Màn hình chính co lại 20% và trượt nhiều
     _mainScreenScaleAnimation = Tween<double>(begin: 1.0, end: 0.8).animate(curvedAnimation);
-    _mainScreenSlideAnimation = Tween<double>(begin: 0, end: 240).animate(curvedAnimation);
+    _mainScreenSlideAnimation = Tween<double>(begin: 0, end: 270).animate(curvedAnimation);
 
     // Lớp đệm co lại 10% và trượt ít hơn
     _middleLayerScaleAnimation = Tween<double>(begin: 1.0, end: 0.8).animate(curvedAnimation);
-    _middleLayerSlideAnimation = Tween<double>(begin: 0, end: 220).animate(curvedAnimation);
+    _middleLayerSlideAnimation = Tween<double>(begin: 0, end: 260).animate(curvedAnimation);
 
     // Trượt xuống dưới 50 pixels khi mở
-    _verticalSlideAnimation = Tween<double>(begin: 0, end: 50).animate(curvedAnimation);
+    _verticalSlideAnimation = Tween<double>(begin: 0, end: 70).animate(curvedAnimation);
+    _verticalMainScreenSlideAnimation = Tween<double>(begin: 0, end: 50).animate(curvedAnimation);
   }
 
   @override
@@ -80,16 +87,20 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             onSignOut: () { /* TODO: Logic đăng xuất */ },
           ),
 
-          // Lớp 2: Lớp đệm màu cam
+          // Lớp 2: Lớp đệm màu trắng đục
           AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
-              return Transform(
-                transform: Matrix4.identity()
-                  ..translate(_middleLayerSlideAnimation.value,_verticalSlideAnimation.value * 0.5)
-                  ..scale(_middleLayerScaleAnimation.value),
-                alignment: Alignment.centerLeft,
-                child: child,
+              return Padding(
+                // Khi menu mở, thêm padding bên phải để tạo khoảng trống
+                padding: EdgeInsets.only(right: _animationController.value * 60),
+                child: Transform(
+                  transform: Matrix4.identity()
+                    ..translate(_middleLayerSlideAnimation.value, _verticalSlideAnimation.value * 0.5)
+                    ..scale(_middleLayerScaleAnimation.value),
+                  alignment: Alignment.centerLeft,
+                  child: child,
+                ),
               );
             },
             child: Container(
@@ -107,7 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             builder: (context, child) {
               return Transform(
                 transform: Matrix4.identity()
-                  ..translate(_mainScreenSlideAnimation.value)
+                  ..translate(_mainScreenSlideAnimation.value,_verticalMainScreenSlideAnimation.value)
                   ..scale(_mainScreenScaleAnimation.value),
                 alignment: Alignment.centerLeft,
                 child: Container(
@@ -183,7 +194,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F2),
       body: IndexedStack(index: widget.currentTabIndex, children: _pages),
       bottomNavigationBar: _buildCustomBottomNavBar(),
     );
@@ -191,61 +201,42 @@ class _MainScreenState extends State<MainScreen> {
 
   // WIDGET MỚI: Tạo Bottom Nav Bar tùy chỉnh
   Widget _buildCustomBottomNavBar() {
+    // Danh sách các icon cho bottom nav
+    final List<IconData> icons = [
+      Icons.home_filled,
+      Icons.wallet,
+      Icons.restaurant_menu,
+      Icons.person,
+    ];
+
     return Container(
-      height: 70, // Chiều cao của thanh nav
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
+      height: 85, // Tăng chiều cao
+      decoration: const BoxDecoration(
+        color: Color(0xFFFF4B3A), // Màu cam đậm
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(icon: Icons.home_outlined, index: 0),
-          _buildNavItem(icon: Icons.account_balance_wallet_outlined, index: 1),
-          _buildNavItem(icon: Icons.receipt_long_outlined, index: 2),
-          _buildNavItem(icon: Icons.person_outline, index: 3),
-        ],
+        children: List.generate(icons.length, (index) {
+          return _buildNavItem(
+              icon: icons[index],
+              index: index,
+              isSelected: widget.currentTabIndex == index,
+              onTap: widget.onTabChange
+          );
+        }),
       ),
     );
   }
 
   // WIDGET MỚI: Tạo từng item cho thanh Nav Bar
-  Widget _buildNavItem({required IconData icon, required int index}) {
-    bool isSelected = widget.currentTabIndex == index;
-    return InkWell(
-      onTap: () => widget.onTabChange(index),
-      borderRadius: BorderRadius.circular(30), // Bo tròn hiệu ứng nhấn
-      child: SizedBox(
-        width: 60,
-        height: 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Hiệu ứng gạch chân
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              height: 4,
-              width: isSelected ? 25 : 0, // Chiều rộng thay đổi khi được chọn
-              decoration: BoxDecoration(
-                color: const Color(0xFFFA4A0C),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFFFA4A0C) : const Color(0xFFADADAF),
-              size: 28,
-            ),
-            const Spacer(),
-          ],
-        ),
+  Widget _buildNavItem({required IconData icon, required int index, required bool isSelected, required Function(int) onTap}) {
+    return IconButton(
+      onPressed: () => onTap(index),
+      iconSize: 32, // Tăng kích thước icon
+      icon: Icon(
+        icon,
+        color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
       ),
     );
   }

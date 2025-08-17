@@ -30,6 +30,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userFuture = UserService().getUserProfile();
     _ordersFuture = OrderService().getOrderHistory();
   }
+  Widget _buildProfileHeader(UserModel user) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: Colors.deepOrange.withAlpha(25),
+          backgroundImage: NetworkImage(user.avatarUrl ?? "https://i.pravatar.cc/150?img=12"),
+        ),
+        const SizedBox(height: 12),
+        Text(
+            user.name,
+            style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black
+            )
+        ),
+        const SizedBox(height: 4),
+        Text(
+            user.email,
+            style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600]
+            )
+        ),
+      ],
+    );
+  }
 
   // Hàm này dùng để tải lại dữ liệu khi cần (ví dụ: nhấn nút "Thử lại")
   void _reloadData() {
@@ -258,23 +286,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Helper để điều hướng đến OrderScreen với tab được chọn
-  void _navigateToOrders(int index) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (context) => OrderScreen(initialIndex: index)));
-  }
-  Widget _buildProfileHeader(UserModel user) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Colors.deepOrange.withAlpha(25), // Sửa lỗi deprecated
-          backgroundImage: NetworkImage(user.avatarUrl ?? "https://i.pravatar.cc/150?img=12"),
-        ),
-        const SizedBox(height: 12),
-        Text(user.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black)),
-        const SizedBox(height: 4),
-        Text(user.email, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-      ],
-    );
+  void _navigateToOrders(int oldIndex) {
+    int newTabIndex;
+
+    // Ánh xạ từ index của giao diện cũ sang index của giao diện mới
+    // 0, 1, 2 (Chờ xác nhận, Chờ lấy hàng, Đang giao) -> đều là tab "Active" (index 0)
+    if (oldIndex >= 0 && oldIndex <= 2) {
+      newTabIndex = 0;
+    }
+    // 3 (Đã giao) -> là tab "Completed" (index 1)
+    else if (oldIndex == 3) {
+      newTabIndex = 1;
+    }
+    // Mặc định là tab đầu tiên
+    else {
+      newTabIndex = 0;
+    }
+
+    Navigator.of(context).push(MaterialPageRoute(
+      // Sửa 'initialIndex' thành 'initialTabIndex'
+      builder: (context) => OrderScreen(initialTabIndex: newTabIndex),
+    ));
   }
 
   Widget _buildSettingsGroup({

@@ -53,6 +53,22 @@ class ProductService {
       return [];
     }
   }
+  // [PUBLIC] Lấy gợi ý tìm kiếm (chỉ trả về tên)
+  Future<List<String>> getSearchSuggestions(String query) async {
+    try {
+      // API backend: /api/menu-items/suggestions?query=...
+      const url = '${ApiConfig.baseUrl}/menu-items/suggestions';
+      final response = await _dio.get(url, queryParameters: {'query': query});
+      if (response.statusCode == 200) {
+        // API trả về một mảng các chuỗi, ví dụ: ["Bún bò", "Bún riêu"]
+        return List<String>.from(response.data);
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Lỗi khi lấy gợi ý tìm kiếm: $e");
+      return [];
+    }
+  }
   // --- CÁC HÀM MỚI CHO ADMIN ---
 
   // [ADMIN] Tạo món ăn mới

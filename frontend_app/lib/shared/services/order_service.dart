@@ -100,6 +100,35 @@ class OrderService {
       return null;
     }
   }
+
+  Future<bool> cancelOrder(String orderId, String reason) async {
+    try {
+      // Endpoint của backend để hủy đơn hàng, thường là phương thức PUT hoặc PATCH
+      // Ví dụ: /api/orders/:id/cancel
+      final url = '${ApiConfig.baseUrl}/orders/$orderId/cancel';
+
+      debugPrint("Gửi yêu cầu PUT đến: $url");
+      debugPrint("Với lý do: $reason");
+
+      // Gửi request lên server với lý do hủy
+      final response = await _dio.put(
+        url,
+        data: {'cancellationReason': reason},
+      );
+
+      // Nếu server trả về status code 200 (OK), coi như thành công
+      return response.statusCode == 200;
+
+    } on DioException catch (e) {
+      debugPrint("Lỗi DioException khi hủy đơn hàng: ${e.response?.data ?? e.message}");
+      return false;
+    } catch (e) {
+      debugPrint("Lỗi không xác định khi hủy đơn hàng: $e");
+      return false;
+    }
+  }
+
+
   // [ADMIN] Lấy TẤT CẢ đơn hàng
   Future<List<OrderModel>> getAllOrders() async {
     try {

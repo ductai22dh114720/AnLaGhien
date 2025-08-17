@@ -124,7 +124,70 @@ exports.getOrderDetail = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi lấy chi tiết đơn hàng.' });
   }
 };
-// --- CÁC HÀM CÒN THIẾU DÀNH CHO ADMIN ---
+
+exports.cancelOrderByUser = async (req, res) => {
+    // BẮT ĐẦU MỘT SESSION GIAO DỊCH
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const userId = req.userData.userId;
+        const { id } = req.params; // Lấy orderId từ URL
+        const { cancellationReason } = req.body; // Lấy lý do từ body request
+
+        if (!cancellationReason) {
+            await session.abortTransaction();
+            return res.status(400).json({ message: 'Vui lòng cung cấp lý do hủy đơn.' });
+        }
+
+        // 1. Tìm đơn hàng
+        const order = await Order.findOne({ _id: id, customer: userId }).session(session);
+
+        if (!order) {
+            await session.abortTransaction();
+            return res.status(404).json({ message: 'Không tìm thấy đơn hàng hoặc bạn không có quyền hủy đơn này.' });
+        }
+
+        // 2. Kiểm tra xem đơn hàng có được phép hủy không
+        // Chỉ cho phép hủy khi trạng thái là 'pending' (chờ xác nhận)
+        if (order.status !== 'pending') {
+            await session.abortTransaction();
+            return res.status(400).json({ message: `Không thể hủy đơn hàng ở trạng thái "${order.status}".` });
+        }
+
+        // 3. HOÀN TIỀN NẾU ĐÃ THANH TOÁN BẰNG VÍ
+        if (order.paymentMethod === 'wallet') {
+            const wallet = await Wallet.findOne({ user: userId }).session(session);
+            if (wallet) {
+                wallet.balance += order.totalAmount;
+                await wallet.save({ session });
+            }
+            // Nếu không tìm thấy ví, vẫn tiếp tục hủy đơn nhưng log lại lỗi
+            else {
+                 console.warn(`Cảnh báo: Không tìm thấy ví cho user ${userId} để hoàn tiền cho đơn hàng ${id}.`);
+            }
+        }
+
+        // 4. Cập nhật trạng thái và lý do hủy đơn hàng
+        order.status = 'cancelled';
+        order.cancellationReason = cancellationReason;
+        await order.save({ session });
+
+        // 5. COMMIT GIAO DỊCH
+        await session.commitTransaction();
+
+        res.status(200).json({ message: 'Hủy đơn hàng thành công!', order });
+
+    } catch (error) {
+        // Nếu có lỗi, HỦY TẤT CẢ
+        await session.abortTransaction();
+        console.error("Lỗi khi người dùng hủy đơn hàng:", error);
+        res.status(500).json({ message: 'Lỗi server khi hủy đơn hàng.' });
+    } finally {
+        // Luôn kết thúc session
+        session.endSession();
+    }
+};
 
 // [ADMIN] Lấy tất cả đơn hàng của tất cả người dùng
 exports.getAllOrders = async (req, res) => {

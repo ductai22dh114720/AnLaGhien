@@ -27,6 +27,8 @@ router.get('/all', authMiddleware, adminMiddleware, orderController.getAllOrders
 // Route này phải nằm sau '/all' để không bị bắt nhầm
 router.get('/:id', authMiddleware, orderController.getOrderDetail);
 
+// PUT /api/orders/:id/cancel - User tự hủy đơn hàng
+router.put('/:id/cancel', checkAuth, orderController.cancelOrderByUser);
 
 // --- Routes cho Admin ---
 
