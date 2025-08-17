@@ -28,7 +28,7 @@ router.get('/all', authMiddleware, adminMiddleware, orderController.getAllOrders
 router.get('/:id', authMiddleware, orderController.getOrderDetail);
 
 // PUT /api/orders/:id/cancel - User tự hủy đơn hàng
-router.put('/:id/cancel', checkAuth, orderController.cancelOrderByUser);
+router.put('/:id/cancel', authMiddleware, orderController.cancelOrderByUser);
 
 // --- Routes cho Admin ---
 
