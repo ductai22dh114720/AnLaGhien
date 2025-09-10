@@ -46,6 +46,10 @@ const OrderSchema = new Schema({
        },
        default: 'pending'
    },
+   isReviewed: {
+       type: Boolean,
+       default: false
+   }
     // Có thể thêm các trường khác như ghi chú của khách hàng
     notes: {
         type: String

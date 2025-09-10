@@ -1,5 +1,7 @@
 // lib/models/order_model.dart
 
+import 'package:flutter/cupertino.dart';
+
 class OrderItemModel {
   final String name;
   final String? imageUrl;
@@ -33,6 +35,7 @@ class OrderModel {
   final String status;
   final DateTime createdAt;
   final String restaurantName;
+  final bool isReviewed;
 
   OrderModel({
     required this.id,
@@ -42,6 +45,7 @@ class OrderModel {
     required this.status,
     required this.createdAt,
     required this.restaurantName,
+    required this.isReviewed,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -55,7 +59,7 @@ class OrderModel {
         restName = restaurant?['name'] as String? ?? restName;
       }
     } catch (e) {
-      print("Lỗi khi parse tên nhà hàng: $e");
+      debugPrint("Lỗi khi parse tên nhà hàng: $e");
     }
 
     return OrderModel(
@@ -68,6 +72,7 @@ class OrderModel {
       status: json['status'] as String? ?? 'unknown',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       restaurantName: restName,
+      isReviewed: json['isReviewed'] as bool? ?? false,
     );
   }
 }

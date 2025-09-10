@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dapm/features/dashboard/screen/cancel_order_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/order_detail_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/order_leave_review_screen.dart';
 import 'package:flutter_dapm/shared/models/order_model.dart';
 import 'package:flutter_dapm/shared/services/order_service.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_dapm/features/dashboard/screen/order_detail_screen.dart';
-import 'package:flutter_dapm/features/dashboard/screen/cancel_order_screen.dart';
 
 // --- ĐỊNH NGHĨA MÀU SẮC THEO THIẾT KẾ ---
 const Color kYellowBackgroundColor = Color(0xFFF9A825); // Màu vàng nền
@@ -13,7 +14,8 @@ const Color kTextColor = Color(0xFF333333); // Màu chữ chính
 
 class OrderScreen extends StatefulWidget {
   final int initialTabIndex;
-  const OrderScreen({super.key,this.initialTabIndex = 0});
+
+  const OrderScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<OrderScreen> createState() => _OrderScreenState();
@@ -33,17 +35,24 @@ class _OrderScreenState extends State<OrderScreen> {
   // Định nghĩa các tab mới và ánh xạ các trạng thái từ database
   final List<Map<String, dynamic>> _tabs = [
     {
-      'label': 'Active',
-      // 'Active' bao gồm các đơn hàng đang chờ, đã xác nhận và đang giao
-      'statuses': ['pending', 'confirmed', 'out_for_delivery']
+      'label': 'Chờ xác nhận',
+      'statuses': ['pending'],
     },
     {
-      'label': 'Completed',
+      'label': 'Chờ lấy hàng',
+      'statuses': ['confirmed']
+    },
+    {
+      'label': 'Chờ giao hàng',
+      'statuses': ['out_for_delivery'],
+    },
+    {
+      'label': 'Đã giao',
       'statuses': ['delivered']
     },
     {
-      'label': 'Cancelled',
-      'statuses': ['cancelled']
+      'label': 'Đã hủy',
+      'statuses': ['cancelled'],
     },
   ];
 
@@ -99,14 +108,6 @@ class _OrderScreenState extends State<OrderScreen> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Nút back
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
           // Tiêu đề
           const Text(
             "My Orders",
@@ -123,32 +124,43 @@ class _OrderScreenState extends State<OrderScreen> {
 
   // Widget xây dựng các nút tab
   Widget _buildStatusTabs() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: List.generate(_tabs.length, (index) {
-        bool isSelected = _selectedTabIndex == index;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedTabIndex = index;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? kPrimaryOrangeColor : kLightOrangeColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              _tabs[index]['label'],
-              style: TextStyle(
-                color: isSelected ? Colors.white : kPrimaryOrangeColor,
-                fontWeight: FontWeight.bold,
+    // Bọc Row bằng SingleChildScrollView để cho phép cuộn ngang
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      // Thêm physics để cuộn mượt hơn và ẩn thanh cuộn
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        // Không dùng spaceAround nữa, để các nút nằm cạnh nhau
+        children: List.generate(_tabs.length, (index) {
+          bool isSelected = _selectedTabIndex == index;
+          // Thêm Padding để tạo khoảng cách giữa các nút
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6.0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTabIndex = index;
+                });
+              },
+              child: Container(
+                // Giảm padding một chút để tiết kiệm không gian
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? kPrimaryOrangeColor : kLightOrangeColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _tabs[index]['label'],
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : kPrimaryOrangeColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
@@ -199,7 +211,9 @@ class _OrderListState extends State<OrderList> {
       future: _ordersFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: kPrimaryOrangeColor,));
+          return const Center(
+            child: CircularProgressIndicator(color: kPrimaryOrangeColor),
+          );
         }
         if (snapshot.hasError) {
           return const Center(child: Text("Lỗi tải dữ liệu."));
@@ -209,9 +223,10 @@ class _OrderListState extends State<OrderList> {
         }
 
         // Lọc các đơn hàng có trạng thái nằm trong danh sách statuses được truyền vào
-        final filteredOrders = snapshot.data!
-            .where((order) => widget.statuses.contains(order.status))
-            .toList();
+        final filteredOrders =
+            snapshot.data!
+                .where((order) => widget.statuses.contains(order.status))
+                .toList();
 
         if (filteredOrders.isEmpty) {
           return _buildEmptyState();
@@ -224,7 +239,13 @@ class _OrderListState extends State<OrderList> {
             // --- SỬ DỤNG GIAO DIỆN THẺ MỚI ---
             return _buildNewOrderCard(filteredOrders[index]);
           },
-          separatorBuilder: (context, index) => const Divider(height: 24, color: Colors.transparent),
+          separatorBuilder:
+              (context, index) => const Divider(
+                height: 1,
+                color: Color(0xFFF0F0F0),
+                indent: 20,
+                endIndent: 20,
+              ),
         );
       },
     );
@@ -248,169 +269,277 @@ class _OrderListState extends State<OrderList> {
 
   // --- HÀM XÂY DỰNG THẺ ĐƠN HÀNG MỚI THEO THIẾT KẾ ---
   Widget _buildNewOrderCard(OrderModel order) {
-    // Định dạng tiền tệ theo $ như trong thiết kế
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-    // Định dạng ngày tháng
     final dateFormatter = DateFormat('dd MMM, hh:mm a');
-
     final totalItems = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
 
     return InkWell(
       onTap: () async {
         final result = await Navigator.of(context).push(
           MaterialPageRoute(
-              builder: (context) => OrderDetailScreen(orderId: order.id)),
+            builder: (context) => OrderDetailScreen(orderId: order.id),
+          ),
         );
         if (result == true) {
           _refreshOrders();
         }
       },
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- HÌNH ẢNH SẢN PHẨM ---
-              ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Image.network(
-                  order.items.first.imageUrl ?? 'https://via.placeholder.com/150',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stack) =>
-                  const Icon(Icons.image_not_supported, size: 80, color: Colors.grey),
-                ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                order.items.first.imageUrl ?? 'https://via.placeholder.com/150',
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stack) =>
+                const Icon(Icons.image_not_supported, size: 80, color: Colors.grey),
               ),
-              const SizedBox(width: 12),
-              // --- THÔNG TIN ĐƠN HÀNG VÀ NÚT ---
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Tên sản phẩm chính
-                        Text(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
                           order.items.first.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: kTextColor,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: kTextColor),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        // Giá tiền
-                        Text(
-                          currencyFormatter.format(order.totalAmount),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: kPrimaryOrangeColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Ngày đặt hàng
-                        Text(
-                          dateFormatter.format(order.createdAt),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                        // Số lượng items
-                        Text(
-                          '$totalItems items',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // --- CÁC NÚT HÀNH ĐỘNG ---
-                    // Chỉ hiển thị cho các đơn hàng "Active"
-                    if (widget.statuses.contains('pending') || widget.statuses.contains('confirmed') || widget.statuses.contains('out_for_delivery'))
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                // Điều hướng đến màn hình hủy và chờ kết quả trả về
-                                final result = await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => CancelOrderScreen(orderId: order.id),
-                                  ),
-                                );
-
-                                // Nếu kết quả trả về là 'true' (hủy thành công),
-                                // thì làm mới lại danh sách đơn hàng.
-                                if (result == true) {
-                                  _refreshOrders();
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: kPrimaryOrangeColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text('Cancel Order'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () { /* TODO: Logic theo dõi tài xế */ },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: kLightOrangeColor,
-                                foregroundColor: kPrimaryOrangeColor,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text('Track Driver'),
-                            ),
-                          ),
-                        ],
-                      )
-                  ],
-                ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        currencyFormatter.format(order.totalAmount),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: kPrimaryOrangeColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        dateFormatter.format(order.createdAt),
+                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                      Text('$totalItems items', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _buildStatusLine(order),
+                  const SizedBox(height: 12),
+                  _buildActionButtons(order),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: Color(0xFFF0F0F0)),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  // --- HÀM NÀY ĐÃ ĐƯỢC CẬP NHẬT ĐỂ DÙNG LOGIC CỦA BẠN ---
+  Widget _buildStatusLine(OrderModel order) {
+    // Chỉ hiển thị dòng trạng thái cho tab Completed và Cancelled
+    if (order.status != 'delivered' && order.status != 'cancelled') {
+      return const SizedBox.shrink();
+    }
+    IconData icon;
+    switch (order.status) {
+      case 'delivered':
+        icon = Icons.check_circle;
+        break;
+      case 'cancelled':
+        icon = Icons.cancel;
+        break;
+      default:
+        icon = Icons.info;
+    }
+
+
+    // Lấy text và màu từ các hàm helper bạn đã cung cấp
+    final String text = _getStatusText(order.status);
+    final Color color = _getStatusColor(order.status);
+
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 6),
+        Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
+
+  // --- WIDGET HELPER MỚI: HIỂN THỊ CÁC NÚT HÀNH ĐỘNG ---
+  Widget _buildActionButtons(OrderModel order) {
+    // --- GIAO DIỆN CHO TAB "COMPLETED" ---
+    if (widget.statuses.contains('delivered')) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () async {
+                // NẾU ĐƠN HÀNG ĐÃ ĐƯỢC ĐÁNH GIÁ
+                if (order.isReviewed) {
+                  // TODO: Điều hướng đến trang xem chi tiết đánh giá
+                  // Ví dụ: Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReviewDetailScreen(orderId: order.id)));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chức năng xem lại đánh giá sắp ra mắt!")));
+                }
+                // NẾU CHƯA ĐÁNH GIÁ
+                else {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => LeaveReviewScreen(order: order),
+                    ),
+                  );
+                  // Nếu LeaveReviewScreen trả về true (đã review thành công)
+                  // thì tải lại danh sách đơn hàng để cập nhật isReviewed
+                  if (result == true) {
+                    _refreshOrders();
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryOrangeColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              // THAY ĐỔI TÊN NÚT DỰA TRÊN isReviewed
+              child: Text(order.isReviewed ? 'Xem đánh giá' : 'Leave a review'),
+            ),
+          ),
+          const SizedBox(width:10),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                /* TODO: Logic đặt lại đơn hàng */
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kLightOrangeColor,
+                foregroundColor: kPrimaryOrangeColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Order Again'),
+            ),
+          ),
+        ],
+      );
+    }
+    // --- GIAO DIỆN CHO TAB "CANCELLED" ---
+    if (widget.statuses.contains('cancelled')) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                /* TODO: Logic đặt lại đơn hàng */
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kLightOrangeColor,
+                foregroundColor: kPrimaryOrangeColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Order Again'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // --- GIAO DIỆN MẶC ĐỊNH CHO TAB "ACTIVE" ---
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            // Chỉ cho phép hủy khi đơn hàng đang 'pending'
+            onPressed:
+                (order.status == 'pending')
+                    ? () async {
+                      final result = await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder:
+                              (context) => CancelOrderScreen(orderId: order.id),
+                        ),
+                      );
+                      if (result == true) {
+                        _refreshOrders();
+                      }
+                    }
+                    : null, // Vô hiệu hóa nút nếu không phải 'pending'
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimaryOrangeColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Cancel Order'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () {
+              /* TODO: Logic theo dõi tài xế */
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kLightOrangeColor,
+              foregroundColor: kPrimaryOrangeColor,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Track Driver'),
+          ),
+        ),
+      ],
+    );
+  }
 }
+
 // --- CÁC HÀM HELPER CHO MÀU SẮC VÀ TEXT ---
 String _getStatusText(String status) {
   switch (status) {
-    case 'pending': return 'Chờ xác nhận';
-    case 'confirmed': return 'Chờ lấy hàng';
-    case 'out_for_delivery': return 'Đang giao';
-    case 'delivered': return 'Đã giao';
-    case 'cancelled': return 'Đã hủy';
-    default: return status;
+    case 'pending':
+      return 'Chờ xác nhận';
+    case 'confirmed':
+      return 'Chờ lấy hàng';
+    case 'out_for_delivery':
+      return 'Đang giao';
+    case 'delivered':
+      return 'Đã giao';
+    case 'cancelled':
+      return 'Đã hủy';
+    default:
+      return status;
   }
 }
 
 Color _getStatusColor(String status) {
   switch (status) {
-    case 'pending': return Colors.orange.shade700;
-    case 'delivered': return Colors.green.shade700;
-    case 'cancelled': return Colors.red.shade700;
-    default: return Colors.blue.shade700;
+    case 'pending':
+      return Colors.orange.shade700;
+    case 'delivered':
+      return Colors.green.shade700;
+    case 'cancelled':
+      return Colors.red.shade700;
+    default:
+      return Colors.blue.shade700;
   }
 }
