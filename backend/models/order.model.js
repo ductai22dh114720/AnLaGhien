@@ -49,7 +49,7 @@ const OrderSchema = new Schema({
    isReviewed: {
        type: Boolean,
        default: false
-   }
+   },
     // Có thể thêm các trường khác như ghi chú của khách hàng
     notes: {
         type: String
