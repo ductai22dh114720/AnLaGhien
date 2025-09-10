@@ -35,5 +35,4 @@ router.put('/:id/cancel', authMiddleware, orderController.cancelOrderByUser);
 // PUT /api/orders/:id/status - Cập nhật trạng thái
 router.put('/:id/status', authMiddleware, adminMiddleware, orderController.updateOrderStatus);
 
-
 module.exports = router;
