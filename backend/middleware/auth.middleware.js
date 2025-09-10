@@ -1,7 +1,7 @@
 // File: backend/middleware/auth.middleware.js
 const jwt = require('jsonwebtoken');
 
-console.log(">>> ADMIN TOKEN:", process.env.JWT_SECRET, { expiresIn: '8h' }));
+console.log(">>> ADMIN TOKEN:", process.env.JWT_SECRET, { expiresIn: '8h' });
 
 module.exports = (req, res, next) => {
     try {
