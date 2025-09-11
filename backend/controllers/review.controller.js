@@ -79,7 +79,8 @@ exports.getMyReviews = async (req, res) => {
         const userId = req.userData.userId;
         const reviews = await Review.find({ customer: userId })
             .sort({ createdAt: -1 })
-            .populate('restaurant', 'name imageUrl') // Lấy thông tin nhà hàng
+            .populate('restaurant', 'name imageUrl')
+            .populate('customer', 'name avatarUrl')// Lấy thông tin nhà hàng
             .populate({
                 path: 'order',
                 select: 'items',
@@ -102,11 +103,17 @@ exports.getReviewByOrderId = async (req, res) => {
         const userId = req.userData.userId;
         const { orderId } = req.params;
 
+        // <<< CẬP NHẬT TRUY VẤN Ở ĐÂY >>>
         const review = await Review.findOne({ order: orderId, customer: userId })
             .populate('restaurant', 'name imageUrl')
+            // Thêm dòng populate này để lấy thông tin chi tiết của khách hàng
+            .populate('customer', 'name avatarUrl')
             .populate({
                 path: 'order',
-                populate: { path: 'items.menuItem', select: 'name imageUrl' }
+                populate: {
+                    path: 'items.menuItem',
+                    select: 'name imageUrl'
+                }
             });
 
         if (!review) {
