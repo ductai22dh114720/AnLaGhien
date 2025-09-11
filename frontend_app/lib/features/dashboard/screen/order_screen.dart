@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dapm/features/dashboard/screen/cancel_order_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_detail_screen.dart';
 import 'package:flutter_dapm/features/dashboard/screen/order_leave_review_screen.dart';
+import 'package:flutter_dapm/features/dashboard/screen/order_review_detail_screen.dart';
 import 'package:flutter_dapm/shared/models/order_model.dart';
 import 'package:flutter_dapm/shared/services/order_service.dart';
 import 'package:intl/intl.dart';
@@ -390,9 +391,9 @@ class _OrderListState extends State<OrderList> {
               onPressed: () async {
                 // NẾU ĐƠN HÀNG ĐÃ ĐƯỢC ĐÁNH GIÁ
                 if (order.isReviewed) {
-                  // TODO: Điều hướng đến trang xem chi tiết đánh giá
-                  // Ví dụ: Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReviewDetailScreen(orderId: order.id)));
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chức năng xem lại đánh giá sắp ra mắt!")));
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ReviewDetailScreen(orderId: order.id),
+                  ));
                 }
                 // NẾU CHƯA ĐÁNH GIÁ
                 else {
