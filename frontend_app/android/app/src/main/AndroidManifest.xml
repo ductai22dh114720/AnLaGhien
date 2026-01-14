@@ -31,7 +31,7 @@
         <!-- THẺ META-DATA CHO API KEY CỦA GOOGLE MAPS -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDoFrAvPlf5ol0Pune_HNZCgCtNdm-HS9g" />
+            android:value="${googleMapsApiKey}" />
 
         <meta-data
             android:name="flutterEmbedding"
