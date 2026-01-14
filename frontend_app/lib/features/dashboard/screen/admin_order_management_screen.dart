@@ -41,7 +41,7 @@ class _AdminOrderManagementScreenState extends State<AdminOrderManagementScreen>
         return AlertDialog(
           title: Text('Cập nhật trạng thái'),
           content: DropdownButtonFormField<String>(
-            value: selectedStatus,
+            initialValue: selectedStatus,
             items: allStatus.map((status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
             onChanged: (value) {
               if (value != null) {

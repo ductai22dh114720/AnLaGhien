@@ -11,7 +11,8 @@ import 'package:flutter_dapm/shared/services/user_service.dart';
 import 'package:flutter_dapm/shared/utils/custom_page_route.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final Function(int)? navigateToOrderTab;
+  const ProfileScreen({super.key, this.navigateToOrderTab});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -64,18 +65,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _userFuture = UserService().getUserProfile();
       _ordersFuture = OrderService().getOrderHistory();
-    });
-  }
-  // Tải tất cả dữ liệu cần thiết
-  void _loadInitialData() {
-    setState(() {
-      _userFuture = UserService().getUserProfile();
-      _ordersFuture = OrderService().getOrderHistory(); // <<<--- TẢI ĐƠN HÀNG
-    });
-  }
-  void _loadUserProfile() {
-    setState(() {
-      _userFuture = UserService().getUserProfile();
     });
   }
 
@@ -164,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
 
-  // --- CÁC WIDGET HELPER ---
   // --- CÁC WIDGET HELPER ---
   Widget _buildErrorState() {
     return Center(
@@ -286,29 +274,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Helper để điều hướng đến OrderScreen với tab được chọn
-  void _navigateToOrders(int oldIndex) {
-    int newTabIndex;
-
-    // Ánh xạ từ index của giao diện cũ sang index của giao diện mới
-    // 0, 1, 2 (Chờ xác nhận, Chờ lấy hàng, Đang giao) -> đều là tab "Active" (index 0)
-    if (oldIndex >= 0 && oldIndex <= 2) {
-      newTabIndex = 0;
+  void _navigateToOrders(int tabIndex) {
+    // Kiểm tra xem callback có được truyền vào không
+    if (widget.navigateToOrderTab != null) {
+      // Nếu có, gọi callback để DashboardScreen xử lý việc chuyển tab
+      widget.navigateToOrderTab!(tabIndex);
+    } else {
+      // Nếu không (trường hợp dự phòng), sử dụng cách cũ
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) => OrderScreen(initialTabIndex: tabIndex),
+      ));
     }
-    // 3 (Đã giao) -> là tab "Completed" (index 1)
-    else if (oldIndex == 3) {
-      newTabIndex = 1;
-    }
-    // Mặc định là tab đầu tiên
-    else {
-      newTabIndex = 0;
-    }
-
-    Navigator.of(context).push(MaterialPageRoute(
-      // Sửa 'initialIndex' thành 'initialTabIndex'
-      builder: (context) => OrderScreen(initialTabIndex: newTabIndex),
-    ));
   }
-
   Widget _buildSettingsGroup({
     required String title,
     required List<Widget> children,

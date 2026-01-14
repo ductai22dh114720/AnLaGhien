@@ -131,7 +131,7 @@ class _AdminAddEditMenuItemScreenState extends State<AdminAddEditMenuItemScreen>
                     _isAvailable = value;
                   });
                 },
-                activeColor: Colors.indigo,
+                activeThumbColor: Colors.indigo,
               ),
             ],
           ),

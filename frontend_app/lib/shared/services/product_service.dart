@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dapm/shared/constants/api_config.dart';
 import 'package:flutter_dapm/shared/models/menu_item_model.dart';
-import 'package:flutter_dapm/shared/models/menu_item_model.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ProductService {

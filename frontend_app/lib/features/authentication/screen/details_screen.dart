@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dapm/features/dashboard/screen/checkout_screen.dart'; // <<<--- IMPORT
 import 'package:flutter_dapm/shared/provider/cart_provider.dart';
-import 'package:flutter_dapm/shared/theme/app_styles.dart';
 import 'package:intl/intl.dart'; // <<<--- IMPORT
 
 class DetailsScreen extends StatefulWidget {

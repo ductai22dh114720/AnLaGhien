@@ -33,6 +33,18 @@ class _OrderScreenState extends State<OrderScreen> {
     _selectedTabIndex = widget.initialTabIndex;
   }
 
+  @override
+  void didUpdateWidget(covariant OrderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Kiểm tra xem initialTabIndex từ widget cha có thay đổi không
+    if (widget.initialTabIndex != oldWidget.initialTabIndex) {
+      // Nếu có, cập nhật lại state của tab đang được chọn
+      setState(() {
+        _selectedTabIndex = widget.initialTabIndex;
+      });
+    }
+  }
+
   // Định nghĩa các tab mới và ánh xạ các trạng thái từ database
   final List<Map<String, dynamic>> _tabs = [
     {

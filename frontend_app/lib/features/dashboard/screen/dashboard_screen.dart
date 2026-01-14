@@ -28,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   late Animation<double> _scaleAnimation;
   late Animation<double> _slideAnimation;
   int _currentTabIndex = 0;
+  int? _orderScreenInitialTabIndex;
 
   @override
   void initState() {
@@ -68,10 +69,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   void changeTab(int index) {
     setState(() {
       _currentTabIndex = index;
+      _orderScreenInitialTabIndex = 0;
     });
     if (isMenuOpen) {
       toggleMenu();
     }
+  }
+
+
+  void navigateToOrderTab(int orderTabIndex) {
+    setState(() {
+      // Đặt index cho OrderScreen
+      _orderScreenInitialTabIndex = orderTabIndex;
+      // Chuyển sang tab của OrderScreen (index là 2 trong list _pages)
+      _currentTabIndex = 2;
+    });
   }
 
   @override
@@ -151,6 +163,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   toggleMenu: toggleMenu,
                   onTabChange: (index) => changeTab(index),
                   currentTabIndex: _currentTabIndex,
+                  navigateToOrderTab: navigateToOrderTab,
+                  orderScreenInitialTabIndex: _orderScreenInitialTabIndex ?? 0,
                 ),
               ),
             ),
@@ -165,12 +179,16 @@ class MainScreen extends StatefulWidget {
   final VoidCallback toggleMenu;
   final Function(int) onTabChange;
   final int currentTabIndex;
+  final Function(int) navigateToOrderTab;
+  final int orderScreenInitialTabIndex;
 
   const MainScreen({
     super.key,
     required this.toggleMenu,
     required this.onTabChange,
     required this.currentTabIndex,
+    required this.navigateToOrderTab,
+    required this.orderScreenInitialTabIndex,
   });
 
   @override
@@ -186,10 +204,26 @@ class _MainScreenState extends State<MainScreen> {
     _pages = [
       HomeScreen(toggleMenu: widget.toggleMenu),
       const WalletScreen(),
-      const OrderScreen(),
-      const ProfileScreen(),
+      OrderScreen(initialTabIndex: widget.orderScreenInitialTabIndex),
+      ProfileScreen(navigateToOrderTab: widget.navigateToOrderTab),
     ];
   }
+
+  @override
+  void didUpdateWidget(covariant MainScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Nếu index thay đổi, khởi tạo lại pages để truyền đúng giá trị
+    if (widget.orderScreenInitialTabIndex != oldWidget.orderScreenInitialTabIndex ||
+        widget.currentTabIndex != oldWidget.currentTabIndex) {
+      _pages = [
+        HomeScreen(toggleMenu: widget.toggleMenu),
+        const WalletScreen(),
+        OrderScreen(initialTabIndex: widget.orderScreenInitialTabIndex),
+        ProfileScreen(navigateToOrderTab: widget.navigateToOrderTab),
+      ];
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +244,7 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     return Container(
-      height: 85, // Tăng chiều cao
+      height: 70, // Tăng chiều cao
       decoration: const BoxDecoration(
         color: Color(0xFFFF4B3A), // Màu cam đậm
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),

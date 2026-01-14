@@ -8,6 +8,9 @@ class ApiConfig {
   // static const String _port = "5000";
 
   // URL cơ sở, các file khác sẽ dùng cái này
+  // Để test local, dùng: 'http://localhost:5000/api'
+  // Để dùng production, dùng: 'https://anlaghien-be.onrender.com/api'
+  // static const String baseUrl = 'http://localhost:5000/api';
   static const String baseUrl = 'https://anlaghien-be.onrender.com/api';
   static const String googleApiKey = "AIzaSyDoFrAvPlf5ol0Pune_HNZCgCtNdm-HS9g";
 }

@@ -276,7 +276,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                 const SizedBox(height: 16),
                                 TextFormField(controller: _dobController, readOnly: true, decoration: _inputDecoration('Ngày tháng năm sinh', Icons.calendar_today_outlined), onTap: () => _selectDate(context), validator: (v) => v == null || v.isEmpty ? 'Vui lòng chọn ngày sinh' : null),
                                 const SizedBox(height: 16),
-                                DropdownButtonFormField<String>( value: _selectedGender, decoration: _inputDecoration('Giới tính', Icons.wc_outlined), items: ['Nam', 'Nữ', 'Khác'].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(), onChanged: (v) => setState(() => _selectedGender = v), validator: (v) => v == null ? 'Vui lòng chọn giới tính' : null),
+                                DropdownButtonFormField<String>( initialValue: _selectedGender, decoration: _inputDecoration('Giới tính', Icons.wc_outlined), items: ['Nam', 'Nữ', 'Khác'].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(), onChanged: (v) => setState(() => _selectedGender = v), validator: (v) => v == null ? 'Vui lòng chọn giới tính' : null),
                                 const SizedBox(height: 16),
 
                                 // Ô địa chỉ với GlobalKey
