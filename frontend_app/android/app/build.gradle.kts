@@ -1,9 +1,29 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
+}
+
+// Đọc các khóa bí mật từ tệp local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("android/local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+fun com.android.build.api.dsl.ApplicationExtension.configureDefaultConfig() {
+    // Lấy giá trị từ tệp local.properties hoặc từ biến môi trường
+    val googleMapsApiKey = localProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: System.getenv("GOOGLE_MAPS_API_KEY")
+
+    // Thêm khóa API vào BuildConfig để mã Java/Kotlin có thể truy cập nếu cần
+    buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"$googleMapsApiKey\"")
+
+    // Cung cấp giá trị cho placeholder trong AndroidManifest.xml
+    manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
 }
 
 android {
@@ -12,29 +32,38 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
+    }
+
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/kotlin")
+        }
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.flutter_dapm"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Gọi hàm cấu hình ở đây
+        configureDefaultConfig()
+    }
+
+    // Kích hoạt tính năng BuildConfig
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -43,7 +72,7 @@ android {
 flutter {
     source = "../.."
 }
-// THÊM KHỐI NÀY VÀO
-kotlin {
-    jvmToolchain(17)
+
+dependencies {
+    // Các dependencies khác của bạn
 }
