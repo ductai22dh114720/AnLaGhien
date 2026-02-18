@@ -1,0 +1,49 @@
+name: flutter_dapm
+description: "A new Flutter project."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  curved_navigation_bar: ^1.0.6
+  carousel_slider_plus: 7.1.1 
+  intl: ^0.18.1
+  get_storage: ^2.1.1 
+  google_sign_in: ^6.2.1
+  dio: ^5.8.0+1
+  equatable: ^2.0.5
+  flutter_secure_storage: ^9.0.0
+  flutter_map: ^6.1.0 # Để hiển thị bản đồ OSM
+  latlong2: ^0.9.0
+  webview_flutter: ^4.7.0
+  provider: ^6.1.1
+  image_picker: ^1.1.2
+  google_fonts: ^6.3.0
+
+  webview_flutter_android: any
+  webview_flutter_wkwebview: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: "launcher_icon" # Tên file icon cho Android
+  ios: true
+  image_path: "assets/app_icon.png" # ĐƯỜNG DẪN ĐẾN FILE ẢNH CỦA BẠN
+  min_sdk_android: 21 # optional
+
+  # Cấu hình cho icon thích ứng trên Android 8+ (rất khuyến khích)
+  adaptive_icon_background: "#FFFFFF" # Màu nền của icon
+  adaptive_icon_foreground: "assets/app_icon.png" # Ảnh logo không có nền
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+
